@@ -723,7 +723,7 @@ pub fn micromod_get_version() -> &'static str {
     MICROMOD_VERSION
 }
 
-pub unsafe fn micromod_calculate_mod_file_len(module_header: *mut i8) -> i64 {
+pub unsafe fn micromod_calculate_mod_file_len(module_header: *const i8) -> i64 {
     let mut length;
 
     let mut inst_idx;
@@ -764,8 +764,8 @@ pub unsafe fn micromod_initialise(data: &[u8], sampling_rate: i64, state: &mut S
     if state.restart >= state.song_length {
         state.restart = 0;
     }
-    state.sequence = (state.module_data as *mut u8).offset(952);
-    state.pattern_data = (state.module_data as *mut u8).offset(1084);
+    state.sequence = (state.module_data as *const u8).offset(952);
+    state.pattern_data = (state.module_data as *const u8).offset(1084);
     state.num_patterns = calculate_num_patterns(state.module_data);
     sample_data_offset = 1084 + state.num_patterns * 64 * state.num_channels * 4;
     inst_idx = 1;
