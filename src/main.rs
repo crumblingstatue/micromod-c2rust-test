@@ -84,7 +84,7 @@ pub struct State<'src> {
     pl_channel: i64,
     random_seed: i64,
     channels: [Channel; 16],
-    instruments: [Instrument; 32],
+    instruments: Vec<Instrument>,
     module_data: &'src [i8],
     pattern_data: &'src [u8],
     sequence: &'src [u8],
@@ -758,8 +758,10 @@ impl State<'_> {
         state.num_patterns = calculate_num_patterns(state.module_data);
         sample_data_offset = 1084 + state.num_patterns * 64 * state.num_channels * 4;
         inst_idx = 1;
+        // First instrument is an unused dummy instrument
+        state.instruments.push(Instrument::default());
         while inst_idx < 32 {
-            let inst = &mut state.instruments[inst_idx as usize];
+            let mut inst = Instrument::default();
             sample_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 12) * 2;
             fine_tune = (state.module_data[(inst_idx * 30 + 14) as usize] as i32 & 0xf_i32) as i64;
             inst.fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
@@ -786,6 +788,7 @@ impl State<'_> {
                 .offset(sample_data_offset as isize);
             sample_data_offset += sample_length;
             inst_idx += 1;
+            state.instruments.push(inst);
         }
         state.c2_rate = (if state.num_channels > 4 { 8363 } else { 8287 }) as i64;
         state.gain = (if state.num_channels > 4 { 32 } else { 64 }) as i64;
