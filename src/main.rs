@@ -568,7 +568,7 @@ unsafe fn sequence_row(state: &mut State) -> i64 {
         * 4;
     chan_idx = 0;
     while chan_idx < state.num_channels {
-        note = &mut (*state.channels.as_mut_ptr().offset(chan_idx as isize)).note;
+        note = &mut (state.channels[chan_idx as usize]).note;
         note.key = ((*state.pattern_data.offset(pat_offset as isize) as i32 & 0xf_i32) << 8) as u16;
         let fresh7 = &mut note.key;
         *fresh7 =
