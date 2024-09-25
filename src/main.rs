@@ -68,7 +68,7 @@ static SINE_TABLE: [u8; 32] = [
     235, 224, 212, 197, 180, 161, 141, 120, 97, 74, 49, 24,
 ];
 
-pub struct State {
+pub struct State<'src> {
     sample_rate: i64,
     gain: i64,
     c2_rate: i64,
@@ -86,7 +86,7 @@ pub struct State {
     channels: [Channel; 16],
     instruments: [Instrument; 32],
     module_data: *const i8,
-    pattern_data: *const u8,
+    pattern_data: Option<&'src [u8]>,
     sequence: *const u8,
     song_length: i64,
     restart: i64,
@@ -94,7 +94,7 @@ pub struct State {
     num_channels: i64,
 }
 
-impl Default for State {
+impl Default for State<'_> {
     fn default() -> Self {
         Self {
             sample_rate: Default::default(),
@@ -114,7 +114,7 @@ impl Default for State {
             channels: Default::default(),
             instruments: Default::default(),
             module_data: std::ptr::null_mut(),
-            pattern_data: std::ptr::null_mut(),
+            pattern_data: None,
             sequence: std::ptr::null_mut(),
             song_length: Default::default(),
             restart: Default::default(),
@@ -583,17 +583,15 @@ unsafe fn sequence_row(state: &mut State) -> i64 {
     chan_idx = 0;
     while chan_idx < state.num_channels {
         note = &mut (state.channels[chan_idx as usize]).note;
-        note.key = ((*state.pattern_data.offset(pat_offset as isize) as i32 & 0xf_i32) << 8) as u16;
+        let pattern_data = state.pattern_data.unwrap();
+        note.key = ((pattern_data[pat_offset as usize] as i32 & 0xf_i32) << 8) as u16;
         let fresh7 = &mut note.key;
-        *fresh7 =
-            (*fresh7 as i32 | *state.pattern_data.offset((pat_offset + 1) as isize) as i32) as u16;
-        note.instrument = (*state.pattern_data.offset((pat_offset + 2) as isize) as i32 >> 4) as u8;
+        *fresh7 = (*fresh7 as i32 | pattern_data[(pat_offset + 1) as usize] as i32) as u16;
+        note.instrument = (pattern_data[(pat_offset + 2) as usize] as i32 >> 4) as u8;
         let fresh8 = &mut note.instrument;
-        *fresh8 = (*fresh8 as i32
-            | *state.pattern_data.offset(pat_offset as isize) as i32 & 0x10_i32)
-            as u8;
-        effect = (*state.pattern_data.offset((pat_offset + 2) as isize) as i32 & 0xf_i32) as i64;
-        param = *state.pattern_data.offset((pat_offset + 3) as isize) as i64;
+        *fresh8 = (*fresh8 as i32 | pattern_data[pat_offset as usize] as i32 & 0x10_i32) as u8;
+        effect = (pattern_data[(pat_offset + 2) as usize] as i32 & 0xf_i32) as i64;
+        param = pattern_data[(pat_offset + 3) as usize] as i64;
         pat_offset += 4;
         if effect == 0xe_i32 as i64 {
             effect = 0x10 | param >> 4;
@@ -765,7 +763,10 @@ pub unsafe fn micromod_initialise(data: &[u8], sampling_rate: i64, state: &mut S
         state.restart = 0;
     }
     state.sequence = (state.module_data as *const u8).offset(952);
-    state.pattern_data = (state.module_data as *const u8).offset(1084);
+    state.pattern_data = Some(std::slice::from_raw_parts(
+        (state.module_data as *const u8).offset(1084),
+        data.len() - 1084,
+    ));
     state.num_patterns = calculate_num_patterns(state.module_data);
     sample_data_offset = 1084 + state.num_patterns * 64 * state.num_channels * 4;
     inst_idx = 1;
