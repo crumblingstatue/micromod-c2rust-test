@@ -774,10 +774,10 @@ pub unsafe fn micromod_initialise(data: &[u8], sampling_rate: i64, state: &mut S
         sample_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 12) * 2;
         fine_tune =
             (*state.module_data.offset((inst_idx * 30 + 14) as isize) as i32 & 0xf_i32) as i64;
-        (*inst).fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
+        inst.fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
         volume =
             (*state.module_data.offset((inst_idx * 30 + 15) as isize) as i32 & 0x7f_i32) as i64;
-        (*inst).volume = (if volume > 64 { 64 } else { volume }) as u8;
+        inst.volume = (if volume > 64 { 64 } else { volume }) as u8;
         loop_start = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 16) * 2;
         loop_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 18) * 2;
         if loop_start + loop_length > sample_length {
@@ -791,9 +791,9 @@ pub unsafe fn micromod_initialise(data: &[u8], sampling_rate: i64, state: &mut S
             loop_start = sample_length;
             loop_length = 0;
         }
-        (*inst).loop_start = (loop_start << 14) as u64;
-        (*inst).loop_length = (loop_length << 14) as u64;
-        let fresh14 = &mut (*inst).sample_data;
+        inst.loop_start = (loop_start << 14) as u64;
+        inst.loop_length = (loop_length << 14) as u64;
+        let fresh14 = &mut inst.sample_data;
         *fresh14 = state.module_data.offset(sample_data_offset as isize);
         sample_data_offset += sample_length;
         inst_idx += 1;
