@@ -135,14 +135,13 @@ unsafe fn calculate_num_patterns(module_header: *const i8) -> i64 {
     num_patterns_0 = 0;
     pattern_0 = 0;
     while pattern_0 < 128 {
-        order_entry =
-            (*module_header.offset((952 + pattern_0) as isize) as i32 & 0x7f as i32) as i64;
+        order_entry = (*module_header.offset((952 + pattern_0) as isize) as i32 & 0x7f_i32) as i64;
         if order_entry >= num_patterns_0 {
             num_patterns_0 = order_entry + 1;
         }
         pattern_0 += 1;
     }
-    return num_patterns_0;
+    num_patterns_0
 }
 unsafe fn calculate_num_channels(module_header: *const i8) -> i64 {
     let mut numchan: i64 = 0;
@@ -171,26 +170,20 @@ unsafe fn calculate_num_channels(module_header: *const i8) -> i64 {
             current_block_3 = 3276175668257526147;
         }
     }
-    match current_block_3 {
-        4379976358253192308 => {
-            current_block_3 = 5412093109544641453;
-        }
-        _ => {}
+    if current_block_3 == 4379976358253192308 {
+        current_block_3 = 5412093109544641453;
     }
-    match current_block_3 {
-        5412093109544641453 => {
-            numchan = 4;
-        }
-        _ => {}
+    if current_block_3 == 5412093109544641453 {
+        numchan = 4;
     }
     if numchan > 16 {
         numchan = 0;
     }
-    return numchan;
+    numchan
 }
 unsafe fn unsigned_short_big_endian(buf: *const i8, offset: i64) -> i64 {
-    return ((*buf.offset(offset as isize) as i32 & 0xff as i32) << 8
-        | *buf.offset((offset + 1) as isize) as i32 & 0xff as i32) as i64;
+    ((*buf.offset(offset as isize) as i32 & 0xff_i32) << 8
+        | *buf.offset((offset + 1) as isize) as i32 & 0xff_i32) as i64
 }
 unsafe fn set_tempo(tempo: i64, state: &mut State) {
     state.tick_len = ((state.sample_rate << 1) + (state.sample_rate >> 1)) / tempo;
@@ -198,14 +191,14 @@ unsafe fn set_tempo(tempo: i64, state: &mut State) {
 unsafe fn update_frequency(chan: *mut Channel, state: &mut State) {
     let mut period;
     let mut volume;
-    let freq;
+
     period = ((*chan).period as i32 + (*chan).vibrato_add as i32) as i64;
-    period = period * ARP_TUNING[(*chan).arpeggio_add as usize] as i64 >> 11;
+    period = (period * ARP_TUNING[(*chan).arpeggio_add as usize] as i64) >> 11;
     period = (period >> 1) + (period & 1);
     if period < 14 {
         period = 6848;
     }
-    freq = (state.c2_rate * 428 / period) as u64;
+    let freq = (state.c2_rate * 428 / period) as u64;
     (*chan).step = (freq << 14).wrapping_div(state.sample_rate as u64);
     volume = ((*chan).volume as i32 + (*chan).tremolo_add as i32) as i64;
     if volume > 64 {
@@ -214,13 +207,13 @@ unsafe fn update_frequency(chan: *mut Channel, state: &mut State) {
     if volume < 0 {
         volume = 0;
     }
-    (*chan).ampl = (volume * state.gain >> 5) as u8;
+    (*chan).ampl = ((volume * state.gain) >> 5) as u8;
 }
 unsafe fn tone_portamento(chan: *mut Channel) {
     let mut source;
-    let dest;
+
     source = (*chan).period as i64;
-    dest = (*chan).porta_period as i64;
+    let dest = (*chan).porta_period as i64;
     if source < dest {
         source += (*chan).porta_speed as i64;
         if source > dest {
@@ -236,7 +229,7 @@ unsafe fn tone_portamento(chan: *mut Channel) {
 }
 unsafe fn volume_slide(chan: *mut Channel, param: i64) {
     let mut volume;
-    volume = (*chan).volume as i64 + (param >> 4) - (param & 0xf as i32 as i64);
+    volume = (*chan).volume as i64 + (param >> 4) - (param & 0xf_i32 as i64);
     if volume < 0 {
         volume = 0;
     }
@@ -249,45 +242,45 @@ unsafe fn waveform(phase: i64, type_0: i64, state: &mut State) -> i64 {
     let mut amplitude: i64 = 0;
     match type_0 & 0x3 {
         0 => {
-            amplitude = SINE_TABLE[(phase & 0x1f as i32 as i64) as usize] as i64;
+            amplitude = SINE_TABLE[(phase & 0x1f_i32 as i64) as usize] as i64;
             if phase & 0x20 > 0 {
                 amplitude = -amplitude;
             }
         }
         1 => {
-            amplitude = 255 - ((phase + 0x20 & 0x3f as i32 as i64) << 3);
+            amplitude = 255 - (((phase + 0x20) & 0x3f_i32 as i64) << 3);
         }
         2 => {
             amplitude = 255 - ((phase & 0x20) << 4);
         }
         3 => {
             amplitude = (state.random_seed >> 20) - 255;
-            state.random_seed = state.random_seed * 65 + 17 & 0x1fffffff as i32 as i64;
+            state.random_seed = (state.random_seed * 65 + 17) & 0x1fffffff_i32 as i64;
         }
         _ => {}
     }
-    return amplitude;
+    amplitude
 }
 unsafe fn vibrato(chan: *mut Channel, state: &mut State) {
-    (*chan).vibrato_add = (waveform(
+    (*chan).vibrato_add = ((waveform(
         (*chan).vibrato_phase as i64,
         (*chan).vibrato_type as i64,
         state,
-    ) * (*chan).vibrato_depth as i64
+    ) * (*chan).vibrato_depth as i64)
         >> 7) as i8;
 }
 unsafe fn tremolo(chan: *mut Channel, state: &mut State) {
-    (*chan).tremolo_add = (waveform(
+    (*chan).tremolo_add = ((waveform(
         (*chan).tremolo_phase as i64,
         (*chan).tremolo_type as i64,
         state,
-    ) * (*chan).tremolo_depth as i64
+    ) * (*chan).tremolo_depth as i64)
         >> 6) as i8;
 }
 unsafe fn trigger(channel: *mut Channel, state: &mut State) {
     let period;
-    let ins;
-    ins = (*channel).note.instrument as i64;
+
+    let ins = (*channel).note.instrument as i64;
     if ins > 0 && ins < 32 {
         (*channel).assigned = ins as u8;
         (*channel).sample_offset = 0;
@@ -297,19 +290,17 @@ unsafe fn trigger(channel: *mut Channel, state: &mut State) {
             (*channel).instrument = ins as u8;
         }
     }
-    if (*channel).note.effect as i32 == 0x9 as i32 {
-        (*channel).sample_offset = (((*channel).note.param as i32 & 0xff as i32) << 8) as u64;
-    } else if (*channel).note.effect as i32 == 0x15 as i32 {
+    if (*channel).note.effect as i32 == 0x9_i32 {
+        (*channel).sample_offset = (((*channel).note.param as i32 & 0xff_i32) << 8) as u64;
+    } else if (*channel).note.effect as i32 == 0x15_i32 {
         (*channel).fine_tune = (*channel).note.param;
     }
     if (*channel).note.key as i32 > 0 {
-        period = ((*channel).note.key as i32
-            * FINE_TUNING[((*channel).fine_tune as i32 & 0xf as i32) as usize] as i32
+        period = (((*channel).note.key as i32
+            * FINE_TUNING[((*channel).fine_tune as i32 & 0xf_i32) as usize] as i32)
             >> 11) as i64;
         (*channel).porta_period = ((period >> 1) + (period & 1)) as u16;
-        if (*channel).note.effect as i32 != 0x3 as i32
-            && (*channel).note.effect as i32 != 0x5 as i32
-        {
+        if (*channel).note.effect as i32 != 0x3_i32 && (*channel).note.effect as i32 != 0x5_i32 {
             (*channel).instrument = (*channel).assigned;
             (*channel).period = (*channel).porta_period;
             (*channel).sample_idx = (*channel).sample_offset << 14;
@@ -323,20 +314,18 @@ unsafe fn trigger(channel: *mut Channel, state: &mut State) {
     }
 }
 unsafe fn channel_row(chan: *mut Channel, state: &mut State) {
-    let effect;
-    let param;
     let volume;
     let period;
-    effect = (*chan).note.effect as i64;
-    param = (*chan).note.param as i64;
-    let ref mut fresh0 = (*chan).fx_count;
+    let effect = (*chan).note.effect as i64;
+    let param = (*chan).note.param as i64;
+    let fresh0 = &mut (*chan).fx_count;
     *fresh0 = 0;
-    let ref mut fresh1 = (*chan).arpeggio_add;
+    let fresh1 = &mut (*chan).arpeggio_add;
     *fresh1 = *fresh0 as i8;
-    let ref mut fresh2 = (*chan).tremolo_add;
+    let fresh2 = &mut (*chan).tremolo_add;
     *fresh2 = *fresh1;
     (*chan).vibrato_add = *fresh2;
-    if !(effect == 0x1d as i32 as i64 && param > 0) {
+    if !(effect == 0x1d_i32 as i64 && param > 0) {
         trigger(chan, state);
     }
     match effect {
@@ -349,8 +338,8 @@ unsafe fn channel_row(chan: *mut Channel, state: &mut State) {
             if param & 0xf0 > 0 {
                 (*chan).vibrato_speed = (param >> 4) as u8;
             }
-            if param & 0xf as i32 as i64 > 0 {
-                (*chan).vibrato_depth = (param & 0xf as i32 as i64) as u8;
+            if param & 0xf_i32 as i64 > 0 {
+                (*chan).vibrato_depth = (param & 0xf_i32 as i64) as u8;
             }
             vibrato(chan, state);
         }
@@ -361,8 +350,8 @@ unsafe fn channel_row(chan: *mut Channel, state: &mut State) {
             if param & 0xf0 > 0 {
                 (*chan).tremolo_speed = (param >> 4) as u8;
             }
-            if param & 0xf as i32 as i64 > 0 {
-                (*chan).tremolo_depth = (param & 0xf as i32 as i64) as u8;
+            if param & 0xf_i32 as i64 > 0 {
+                (*chan).tremolo_depth = (param & 0xf_i32 as i64) as u8;
             }
             tremolo(chan, state);
         }
@@ -385,7 +374,7 @@ unsafe fn channel_row(chan: *mut Channel, state: &mut State) {
                 if state.break_pattern < 0 {
                     state.break_pattern = state.pattern + 1;
                 }
-                state.next_row = (param >> 4) * 10 + (param & 0xf as i32 as i64);
+                state.next_row = (param >> 4) * 10 + (param & 0xf_i32 as i64);
                 if state.next_row >= 64 {
                     state.next_row = 0;
                 }
@@ -459,12 +448,10 @@ unsafe fn channel_row(chan: *mut Channel, state: &mut State) {
     update_frequency(chan, state);
 }
 unsafe fn channel_tick(chan: *mut Channel, state: &mut State) {
-    let effect;
-    let param;
     let period;
-    effect = (*chan).note.effect as i64;
-    param = (*chan).note.param as i64;
-    let ref mut fresh3 = (*chan).fx_count;
+    let effect = (*chan).note.effect as i64;
+    let param = (*chan).note.param as i64;
+    let fresh3 = &mut (*chan).fx_count;
     *fresh3 = (*fresh3).wrapping_add(1);
     match effect {
         1 => {
@@ -479,7 +466,7 @@ unsafe fn channel_tick(chan: *mut Channel, state: &mut State) {
             tone_portamento(chan);
         }
         4 => {
-            let ref mut fresh4 = (*chan).vibrato_phase;
+            let fresh4 = &mut (*chan).vibrato_phase;
             *fresh4 = (*fresh4 as i32 + (*chan).vibrato_speed as i32) as u8;
             vibrato(chan, state);
         }
@@ -488,13 +475,13 @@ unsafe fn channel_tick(chan: *mut Channel, state: &mut State) {
             volume_slide(chan, param);
         }
         6 => {
-            let ref mut fresh5 = (*chan).vibrato_phase;
+            let fresh5 = &mut (*chan).vibrato_phase;
             *fresh5 = (*fresh5 as i32 + (*chan).vibrato_speed as i32) as u8;
             vibrato(chan, state);
             volume_slide(chan, param);
         }
         7 => {
-            let ref mut fresh6 = (*chan).tremolo_phase;
+            let fresh6 = &mut (*chan).tremolo_phase;
             *fresh6 = (*fresh6 as i32 + (*chan).tremolo_speed as i32) as u8;
             tremolo(chan, state);
         }
@@ -512,7 +499,7 @@ unsafe fn channel_tick(chan: *mut Channel, state: &mut State) {
                 (*chan).arpeggio_add = (param >> 4) as i8;
             }
             if (*chan).fx_count as i32 == 2 {
-                (*chan).arpeggio_add = (param & 0xf as i32 as i64) as i8;
+                (*chan).arpeggio_add = (param & 0xf_i32 as i64) as i8;
             }
         }
         25 => {
@@ -563,12 +550,12 @@ unsafe fn sequence_row(state: &mut State) -> i64 {
             state.channels[chan_idx as usize].pl_row = 0;
             chan_idx += 1;
         }
-        state.break_pattern = -(1 as i32) as i64;
+        state.break_pattern = -1_i32 as i64;
     }
     state.row = state.next_row;
     state.next_row = state.row + 1;
     if state.next_row >= 64 {
-        state.next_row = -(1 as i32) as i64;
+        state.next_row = -1_i32 as i64;
     }
     pat_offset = ((*state.sequence.offset(state.pattern as isize) as i32 * 64) as i64 + state.row)
         * state.num_channels
@@ -576,36 +563,34 @@ unsafe fn sequence_row(state: &mut State) -> i64 {
     chan_idx = 0;
     while chan_idx < state.num_channels {
         note = &mut (*state.channels.as_mut_ptr().offset(chan_idx as isize)).note;
-        (*note).key =
-            ((*state.pattern_data.offset(pat_offset as isize) as i32 & 0xf as i32) << 8) as u16;
-        let ref mut fresh7 = (*note).key;
+        note.key = ((*state.pattern_data.offset(pat_offset as isize) as i32 & 0xf_i32) << 8) as u16;
+        let fresh7 = &mut note.key;
         *fresh7 =
             (*fresh7 as i32 | *state.pattern_data.offset((pat_offset + 1) as isize) as i32) as u16;
-        (*note).instrument =
-            (*state.pattern_data.offset((pat_offset + 2) as isize) as i32 >> 4) as u8;
-        let ref mut fresh8 = (*note).instrument;
+        note.instrument = (*state.pattern_data.offset((pat_offset + 2) as isize) as i32 >> 4) as u8;
+        let fresh8 = &mut note.instrument;
         *fresh8 = (*fresh8 as i32
-            | *state.pattern_data.offset(pat_offset as isize) as i32 & 0x10 as i32)
+            | *state.pattern_data.offset(pat_offset as isize) as i32 & 0x10_i32)
             as u8;
-        effect = (*state.pattern_data.offset((pat_offset + 2) as isize) as i32 & 0xf as i32) as i64;
+        effect = (*state.pattern_data.offset((pat_offset + 2) as isize) as i32 & 0xf_i32) as i64;
         param = *state.pattern_data.offset((pat_offset + 3) as isize) as i64;
         pat_offset += 4;
-        if effect == 0xe as i32 as i64 {
+        if effect == 0xe_i32 as i64 {
             effect = 0x10 | param >> 4;
-            param &= 0xf as i32 as i64;
+            param &= 0xf_i32 as i64;
         }
         if effect == 0 && param > 0 {
-            effect = 0xe as i32 as i64;
+            effect = 0xe_i32 as i64;
         }
-        (*note).effect = effect as u8;
-        (*note).param = param as u8;
+        note.effect = effect as u8;
+        note.param = param as u8;
         channel_row(
             &mut *state.channels.as_mut_ptr().offset(chan_idx as isize),
             state,
         );
         chan_idx += 1;
     }
-    return song_end;
+    song_end
 }
 unsafe fn sequence_tick(state: &mut State) -> i64 {
     let mut song_end;
@@ -625,12 +610,12 @@ unsafe fn sequence_tick(state: &mut State) -> i64 {
             chan_idx += 1;
         }
     }
-    return song_end;
+    song_end
 }
 unsafe fn resample(chan: *mut Channel, buf: *mut i16, offset: i64, count: i64, state: &mut State) {
     let mut epos;
     let mut buf_idx: u64 = (offset << 1) as u64;
-    let buf_end: u64 = (offset + count << 1) as u64;
+    let buf_end: u64 = ((offset + count) << 1) as u64;
     let mut sidx: u64 = (*chan).sample_idx;
     let step: u64 = (*chan).step;
     let llen: u64 = state.instruments[(*chan).instrument as usize].loop_length;
@@ -641,8 +626,8 @@ unsafe fn resample(chan: *mut Channel, buf: *mut i16, offset: i64, count: i64, s
     } else {
         0
     }) as i16;
-    let lamp: i16 = (ampl as i32 * (127 as i32 - (*chan).panning as i32) >> 5) as i16;
-    let ramp: i16 = (ampl as i32 * (*chan).panning as i32 >> 5) as i16;
+    let lamp: i16 = ((ampl as i32 * (127_i32 - (*chan).panning as i32)) >> 5) as i16;
+    let ramp: i16 = ((ampl as i32 * (*chan).panning as i32) >> 5) as i16;
     while buf_idx < buf_end {
         if sidx >= lep1 {
             if llen <= 16384 {
@@ -664,12 +649,12 @@ unsafe fn resample(chan: *mut Channel, buf: *mut i16, offset: i64, count: i64, s
                     ampl = *sdat.offset((sidx >> 14) as isize) as i16;
                     let fresh9 = buf_idx;
                     buf_idx = buf_idx.wrapping_add(1);
-                    let ref mut fresh10 = *buf.offset(fresh9 as isize);
-                    *fresh10 = (*fresh10 as i32 + (ampl as i32 * lamp as i32 >> 2)) as i16;
+                    let fresh10 = &mut (*buf.offset(fresh9 as isize));
+                    *fresh10 = (*fresh10 as i32 + ((ampl as i32 * lamp as i32) >> 2)) as i16;
                     let fresh11 = buf_idx;
                     buf_idx = buf_idx.wrapping_add(1);
-                    let ref mut fresh12 = *buf.offset(fresh11 as isize);
-                    *fresh12 = (*fresh12 as i32 + (ampl as i32 * ramp as i32 >> 2)) as i16;
+                    let fresh12 = &mut (*buf.offset(fresh11 as isize));
+                    *fresh12 = (*fresh12 as i32 + ((ampl as i32 * ramp as i32) >> 2)) as i16;
                     sidx = sidx.wrapping_add(step);
                 }
             } else {
@@ -677,14 +662,14 @@ unsafe fn resample(chan: *mut Channel, buf: *mut i16, offset: i64, count: i64, s
                     buf_idx = buf_idx.wrapping_add(1);
                 }
                 while sidx < epos {
-                    let ref mut fresh13 = *buf.offset(buf_idx as isize);
+                    let fresh13 = &mut (*buf.offset(buf_idx as isize));
                     *fresh13 = (*fresh13 as i32
                         + *sdat.offset((sidx >> 14) as isize) as i32 * ampl as i32)
                         as i16;
                     buf_idx = buf_idx.wrapping_add(2);
                     sidx = sidx.wrapping_add(step);
                 }
-                buf_idx &= -(2 as i32) as u64;
+                buf_idx &= -2_i32 as u64;
             }
         } else {
             buf_idx = buf_end;
@@ -695,16 +680,16 @@ unsafe fn resample(chan: *mut Channel, buf: *mut i16, offset: i64, count: i64, s
 }
 
 pub unsafe fn micromod_get_version() -> *const i8 {
-    return MICROMOD_VERSION;
+    MICROMOD_VERSION
 }
 
 pub unsafe fn micromod_calculate_mod_file_len(module_header: *mut i8) -> i64 {
     let mut length;
-    let numchan;
+
     let mut inst_idx;
-    numchan = calculate_num_channels(module_header);
+    let numchan = calculate_num_channels(module_header);
     if numchan <= 0 {
-        return -(1 as i32) as i64;
+        return -1_i32 as i64;
     }
     length = 1084 + 4 * numchan * 64 * calculate_num_patterns(module_header);
     inst_idx = 1;
@@ -712,7 +697,7 @@ pub unsafe fn micromod_calculate_mod_file_len(module_header: *mut i8) -> i64 {
         length += unsigned_short_big_endian(module_header, inst_idx * 30 + 12) * 2;
         inst_idx += 1;
     }
-    return length;
+    length
 }
 
 pub unsafe fn micromod_initialise(data: &[u8], sampling_rate: i64, state: &mut State) -> i64 {
@@ -727,15 +712,15 @@ pub unsafe fn micromod_initialise(data: &[u8], sampling_rate: i64, state: &mut S
     state.num_channels = calculate_num_channels(data.as_ptr().cast());
     if state.num_channels <= 0 {
         state.num_channels = 0;
-        return -(1 as i32) as i64;
+        return -1_i32 as i64;
     }
     if sampling_rate < 8000 {
-        return -(2 as i32) as i64;
+        return -2_i32 as i64;
     }
     state.module_data = data.as_ptr().cast();
     state.sample_rate = sampling_rate;
-    state.song_length = (*state.module_data.offset(950) as i32 & 0x7f as i32) as i64;
-    state.restart = (*state.module_data.offset(951) as i32 & 0x7f as i32) as i64;
+    state.song_length = (*state.module_data.offset(950) as i32 & 0x7f_i32) as i64;
+    state.restart = (*state.module_data.offset(951) as i32 & 0x7f_i32) as i64;
     if state.restart >= state.song_length {
         state.restart = 0;
     }
@@ -748,16 +733,16 @@ pub unsafe fn micromod_initialise(data: &[u8], sampling_rate: i64, state: &mut S
         inst = &mut *state.instruments.as_mut_ptr().offset(inst_idx as isize) as *mut Instrument;
         sample_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 12) * 2;
         fine_tune =
-            (*state.module_data.offset((inst_idx * 30 + 14) as isize) as i32 & 0xf as i32) as i64;
+            (*state.module_data.offset((inst_idx * 30 + 14) as isize) as i32 & 0xf_i32) as i64;
         (*inst).fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
         volume =
-            (*state.module_data.offset((inst_idx * 30 + 15) as isize) as i32 & 0x7f as i32) as i64;
+            (*state.module_data.offset((inst_idx * 30 + 15) as isize) as i32 & 0x7f_i32) as i64;
         (*inst).volume = (if volume > 64 { 64 } else { volume }) as u8;
         loop_start = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 16) * 2;
         loop_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 18) * 2;
         if loop_start + loop_length > sample_length {
             if loop_start / 2 + loop_length <= sample_length {
-                loop_start = loop_start / 2;
+                loop_start /= 2;
             } else {
                 loop_length = sample_length - loop_start;
             }
@@ -768,16 +753,16 @@ pub unsafe fn micromod_initialise(data: &[u8], sampling_rate: i64, state: &mut S
         }
         (*inst).loop_start = (loop_start << 14) as u64;
         (*inst).loop_length = (loop_length << 14) as u64;
-        let ref mut fresh14 = (*inst).sample_data;
+        let fresh14 = &mut (*inst).sample_data;
         *fresh14 = state.module_data.offset(sample_data_offset as isize);
         sample_data_offset += sample_length;
         inst_idx += 1;
     }
     state.c2_rate = (if state.num_channels > 4 { 8363 } else { 8287 }) as i64;
     state.gain = (if state.num_channels > 4 { 32 } else { 64 }) as i64;
-    micromod_mute_channel(-(1 as i32) as i64, state);
+    micromod_mute_channel(-1_i32 as i64, state);
     micromod_set_position(0, state);
-    return 0;
+    0
 }
 
 pub unsafe fn micromod_get_string(instrument: i64, string: *mut i8, state: &mut State) {
@@ -798,7 +783,7 @@ pub unsafe fn micromod_get_string(instrument: i64, string: *mut i8, state: &mut 
     index = 0;
     while index < length {
         character = *state.module_data.offset((offset + index) as isize) as i64;
-        if character < 32 || character > 126 {
+        if !(32..=126).contains(&character) {
             character = ' ' as i32 as i64;
         }
         *string.offset(index as isize) = character as i8;
@@ -820,7 +805,7 @@ pub unsafe fn micromod_calculate_song_duration(state: &mut State) -> i64 {
         }
         micromod_set_position(0, state);
     }
-    return duration;
+    duration
 }
 
 pub unsafe fn micromod_set_position(mut pos: i64, state: &mut State) {
@@ -837,14 +822,14 @@ pub unsafe fn micromod_set_position(mut pos: i64, state: &mut State) {
     state.tick = 1;
     state.speed = 6;
     set_tempo(125, state);
-    state.pl_channel = -(1 as i32) as i64;
+    state.pl_channel = -1_i32 as i64;
     state.pl_count = state.pl_channel;
-    state.random_seed = 0xabcdef as i32 as i64;
+    state.random_seed = 0xabcdef_i32 as i64;
     chan_idx = 0;
     while chan_idx < state.num_channels {
         chan = &mut *state.channels.as_mut_ptr().offset(chan_idx as isize) as *mut Channel;
         (*chan).id = chan_idx as u8;
-        let ref mut fresh15 = (*chan).assigned;
+        let fresh15 = &mut (*chan).assigned;
         *fresh15 = 0;
         (*chan).instrument = *fresh15;
         (*chan).volume = 0;
@@ -874,7 +859,7 @@ pub unsafe fn micromod_mute_channel(channel: i64, state: &mut State) -> i64 {
     } else if channel < state.num_channels {
         state.channels[channel as usize].mute = 1;
     }
-    return state.num_channels;
+    state.num_channels
 }
 
 pub unsafe fn micromod_set_gain(value: i64, state: &mut State) {
