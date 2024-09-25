@@ -797,8 +797,7 @@ pub unsafe fn micromod_initialise(data: &[u8], sampling_rate: i64, state: &mut S
         }
         inst.loop_start = (loop_start << 14) as u64;
         inst.loop_length = (loop_length << 14) as u64;
-        let fresh14 = &mut inst.sample_data;
-        *fresh14 = state.module_data.offset(sample_data_offset as isize);
+        inst.sample_data = state.module_data.offset(sample_data_offset as isize);
         sample_data_offset += sample_length;
         inst_idx += 1;
     }
