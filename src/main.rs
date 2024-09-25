@@ -205,7 +205,7 @@ fn update_frequency(chan: &mut Channel, state: &mut State) {
     }
     chan.ampl = ((volume * state.gain) >> 5) as u8;
 }
-unsafe fn tone_portamento(chan: &mut Channel) {
+fn tone_portamento(chan: &mut Channel) {
     let mut source;
 
     source = chan.period as i64;
@@ -223,7 +223,7 @@ unsafe fn tone_portamento(chan: &mut Channel) {
     }
     chan.period = source as u16;
 }
-unsafe fn volume_slide(chan: &mut Channel, param: i64) {
+fn volume_slide(chan: &mut Channel, param: i64) {
     let mut volume;
     volume = chan.volume as i64 + (param >> 4) - (param & 0xf_i32 as i64);
     if volume < 0 {
@@ -234,7 +234,7 @@ unsafe fn volume_slide(chan: &mut Channel, param: i64) {
     }
     chan.volume = volume as u8;
 }
-unsafe fn waveform(phase: i64, type_0: i64, state: &mut State) -> i64 {
+fn waveform(phase: i64, type_0: i64, state: &mut State) -> i64 {
     let mut amplitude: i64 = 0;
     match type_0 & 0x3 {
         0 => {
@@ -257,17 +257,17 @@ unsafe fn waveform(phase: i64, type_0: i64, state: &mut State) -> i64 {
     }
     amplitude
 }
-unsafe fn vibrato(chan: &mut Channel, state: &mut State) {
+fn vibrato(chan: &mut Channel, state: &mut State) {
     chan.vibrato_add = ((waveform(chan.vibrato_phase as i64, chan.vibrato_type as i64, state)
         * chan.vibrato_depth as i64)
         >> 7) as i8;
 }
-unsafe fn tremolo(chan: &mut Channel, state: &mut State) {
+fn tremolo(chan: &mut Channel, state: &mut State) {
     chan.tremolo_add = ((waveform(chan.tremolo_phase as i64, chan.tremolo_type as i64, state)
         * chan.tremolo_depth as i64)
         >> 6) as i8;
 }
-unsafe fn trigger(channel: &mut Channel, state: &mut State) {
+fn trigger(channel: &mut Channel, state: &mut State) {
     let period;
 
     let ins = channel.note.instrument as i64;
@@ -303,7 +303,7 @@ unsafe fn trigger(channel: &mut Channel, state: &mut State) {
         }
     }
 }
-unsafe fn channel_row(chan: &mut Channel, state: &mut State) {
+fn channel_row(chan: &mut Channel, state: &mut State) {
     let volume;
     let period;
     let effect = chan.note.effect as i64;
@@ -437,7 +437,7 @@ unsafe fn channel_row(chan: &mut Channel, state: &mut State) {
     }
     update_frequency(chan, state);
 }
-unsafe fn channel_tick(chan: &mut Channel, state: &mut State) {
+fn channel_tick(chan: &mut Channel, state: &mut State) {
     let period;
     let effect = chan.note.effect as i64;
     let param = chan.note.param as i64;
@@ -838,7 +838,7 @@ pub unsafe fn micromod_set_position(mut pos: i64, state: &mut State) {
     state.tick_offset = 0;
 }
 
-pub unsafe fn micromod_mute_channel(channel: i64, state: &mut State) -> i64 {
+pub fn micromod_mute_channel(channel: i64, state: &mut State) -> i64 {
     let mut chan_idx;
     if channel < 0 {
         chan_idx = 0;
@@ -852,7 +852,7 @@ pub unsafe fn micromod_mute_channel(channel: i64, state: &mut State) -> i64 {
     state.num_channels
 }
 
-pub unsafe fn micromod_set_gain(value: i64, state: &mut State) {
+pub fn micromod_set_gain(value: i64, state: &mut State) {
     state.gain = value;
 }
 
