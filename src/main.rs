@@ -624,7 +624,7 @@ fn sequence_row(state: &mut State) -> i64 {
     }
     song_end
 }
-unsafe fn sequence_tick(state: &mut State) -> i64 {
+fn sequence_tick(state: &mut State) -> i64 {
     let mut song_end;
     let mut chan_idx;
     song_end = 0;
