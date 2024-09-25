@@ -87,7 +87,7 @@ pub struct State<'src> {
     instruments: [Instrument; 32],
     module_data: *const i8,
     pattern_data: Option<&'src [u8]>,
-    sequence: *const u8,
+    sequence: Option<&'src [u8]>,
     song_length: i64,
     restart: i64,
     num_patterns: i64,
@@ -115,7 +115,7 @@ impl Default for State<'_> {
             instruments: Default::default(),
             module_data: std::ptr::null_mut(),
             pattern_data: None,
-            sequence: std::ptr::null_mut(),
+            sequence: None,
             song_length: Default::default(),
             restart: Default::default(),
             num_patterns: Default::default(),
@@ -544,7 +544,7 @@ fn channel_tick(
         update_frequency(chan, sample_rate, gain, c2_rate);
     }
 }
-unsafe fn sequence_row(state: &mut State) -> i64 {
+fn sequence_row(state: &mut State) -> i64 {
     let mut song_end;
     let mut chan_idx;
     let mut pat_offset;
@@ -577,7 +577,7 @@ unsafe fn sequence_row(state: &mut State) -> i64 {
     if state.next_row >= 64 {
         state.next_row = -1_i32 as i64;
     }
-    pat_offset = ((*state.sequence.offset(state.pattern as isize) as i32 * 64) as i64 + state.row)
+    pat_offset = ((state.sequence.unwrap()[state.pattern as usize] as i32 * 64) as i64 + state.row)
         * state.num_channels
         * 4;
     chan_idx = 0;
@@ -762,7 +762,10 @@ pub unsafe fn micromod_initialise(data: &[u8], sampling_rate: i64, state: &mut S
     if state.restart >= state.song_length {
         state.restart = 0;
     }
-    state.sequence = (state.module_data as *const u8).offset(952);
+    state.sequence = Some(std::slice::from_raw_parts(
+        (state.module_data as *const u8).offset(952),
+        data.len() - 952,
+    ));
     state.pattern_data = Some(std::slice::from_raw_parts(
         (state.module_data as *const u8).offset(1084),
         data.len() - 1084,
