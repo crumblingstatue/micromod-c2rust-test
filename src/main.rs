@@ -762,17 +762,9 @@ impl State<'_> {
         while inst_idx < 32 {
             inst = &mut state.instruments[inst_idx as usize];
             sample_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 12) * 2;
-            fine_tune = (*state
-                .module_data
-                .as_ptr()
-                .offset((inst_idx * 30 + 14) as isize) as i32
-                & 0xf_i32) as i64;
+            fine_tune = (state.module_data[(inst_idx * 30 + 14) as usize] as i32 & 0xf_i32) as i64;
             inst.fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
-            volume = (*state
-                .module_data
-                .as_ptr()
-                .offset((inst_idx * 30 + 15) as isize) as i32
-                & 0x7f_i32) as i64;
+            volume = (state.module_data[(inst_idx * 30 + 15) as usize] as i32 & 0x7f_i32) as i64;
             inst.volume = (if volume > 64 { 64 } else { volume }) as u8;
             loop_start = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 16) * 2;
             loop_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 18) * 2;
@@ -821,7 +813,7 @@ pub unsafe fn micromod_get_string(instrument: i64, string: *mut i8, state: &mut 
     }
     index = 0;
     while index < length {
-        character = *state.module_data.as_ptr().offset((offset + index) as isize) as i64;
+        character = state.module_data[(offset + index) as usize] as i64;
         if !(32..=126).contains(&character) {
             character = ' ' as i32 as i64;
         }
