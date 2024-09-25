@@ -830,7 +830,7 @@ pub unsafe fn micromod_calculate_mod_file_len(module_header: *mut i8) -> i64 {
     return length;
 }
 
-pub unsafe fn micromod_initialise(data: *const i8, sampling_rate: i64, state: &mut State) -> i64 {
+pub unsafe fn micromod_initialise(data: &[u8], sampling_rate: i64, state: &mut State) -> i64 {
     let mut inst;
     let mut sample_data_offset;
     let mut inst_idx;
@@ -839,7 +839,7 @@ pub unsafe fn micromod_initialise(data: *const i8, sampling_rate: i64, state: &m
     let mut fine_tune;
     let mut loop_start;
     let mut loop_length;
-    state.num_channels = calculate_num_channels(data);
+    state.num_channels = calculate_num_channels(data.as_ptr().cast());
     if state.num_channels <= 0 as i32 as i64 {
         state.num_channels = 0 as i32 as i64;
         return -(1 as i32) as i64;
@@ -847,7 +847,7 @@ pub unsafe fn micromod_initialise(data: *const i8, sampling_rate: i64, state: &m
     if sampling_rate < 8000 as i32 as i64 {
         return -(2 as i32) as i64;
     }
-    state.module_data = data;
+    state.module_data = data.as_ptr().cast();
     state.sample_rate = sampling_rate;
     state.song_length =
         (*state.module_data.offset(950 as i32 as isize) as i32 & 0x7f as i32) as i64;
@@ -1063,16 +1063,12 @@ pub unsafe fn micromod_get_audio(output_buffer: *mut i16, mut count: i64, state:
 use std::io::{BufWriter, Write as _};
 
 fn main() {
-    let mut mod_data = std::fs::read(std::env::args_os().nth(1).unwrap()).unwrap();
+    let mod_data = std::fs::read(std::env::args_os().nth(1).unwrap()).unwrap();
     let output_file = std::fs::File::create("output.pcm").unwrap();
     let mut writer = BufWriter::new(output_file);
     let mut state = State::default();
     unsafe {
-        dbg!(micromod_initialise(
-            mod_data.as_mut_ptr() as *mut i8,
-            48_000,
-            &mut state
-        ));
+        dbg!(micromod_initialise(&mod_data, 48_000, &mut state));
         for _ in 0..1000 {
             let mut out = [0; 4096];
             micromod_get_audio(out.as_mut_ptr(), 2048, &mut state);
