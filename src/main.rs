@@ -108,10 +108,10 @@ fn calculate_num_patterns(module_header: &[i8]) -> i64 {
     }
     num_patterns_0
 }
-unsafe fn calculate_num_channels(module_header: *const i8) -> i64 {
+fn calculate_num_channels(module_header: &[i8]) -> i64 {
     let mut numchan: i64 = 0;
     let mut current_block_3: u64;
-    match (*module_header.offset(1082) as i32) << 8 | *module_header.offset(1083) as i32 {
+    match (module_header[1082] as i32) << 8 | module_header[1083] as i32 {
         19233 => {
             current_block_3 = 4379976358253192308;
         }
@@ -122,12 +122,12 @@ unsafe fn calculate_num_channels(module_header: *const i8) -> i64 {
             current_block_3 = 5412093109544641453;
         }
         18510 => {
-            numchan = (*module_header.offset(1080) as i32 - 48) as i64;
+            numchan = (module_header[1080] as i32 - 48) as i64;
             current_block_3 = 3276175668257526147;
         }
         17224 => {
-            numchan = ((*module_header.offset(1080) as i32 - 48) * 10
-                + (*module_header.offset(1081) as i32 - 48)) as i64;
+            numchan =
+                ((module_header[1080] as i32 - 48) * 10 + (module_header[1081] as i32 - 48)) as i64;
             current_block_3 = 3276175668257526147;
         }
         _ => {
@@ -694,7 +694,7 @@ pub unsafe fn micromod_calculate_mod_file_len(module_header: &[i8]) -> i64 {
     let mut length;
 
     let mut inst_idx;
-    let numchan = calculate_num_channels(module_header.as_ptr());
+    let numchan = calculate_num_channels(module_header);
     if numchan <= 0 {
         return -1_i32 as i64;
     }
@@ -723,7 +723,7 @@ impl State<'_> {
         let mut fine_tune;
         let mut loop_start;
         let mut loop_length;
-        let num_channels = calculate_num_channels(data.as_ptr().cast());
+        let num_channels = calculate_num_channels(bytemuck::cast_slice(data));
         if num_channels <= 0 {
             return Err(InitError::ChannelNumIncorrect);
         }
