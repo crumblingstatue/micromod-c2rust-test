@@ -715,7 +715,6 @@ pub enum InitError {
 
 impl State<'_> {
     pub unsafe fn init(data: &[u8], sample_rate: i64) -> Result<State, InitError> {
-        let mut inst;
         let mut sample_data_offset;
         let mut inst_idx;
         let mut sample_length;
@@ -760,7 +759,7 @@ impl State<'_> {
         sample_data_offset = 1084 + state.num_patterns * 64 * state.num_channels * 4;
         inst_idx = 1;
         while inst_idx < 32 {
-            inst = &mut state.instruments[inst_idx as usize];
+            let inst = &mut state.instruments[inst_idx as usize];
             sample_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 12) * 2;
             fine_tune = (state.module_data[(inst_idx * 30 + 14) as usize] as i32 & 0xf_i32) as i64;
             inst.fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
