@@ -836,7 +836,7 @@ pub unsafe fn micromod_get_string(instrument: i64, string: *mut i8, state: &mut 
     *string.offset(length as isize) = 0;
 }
 
-pub unsafe fn micromod_calculate_song_duration(state: &mut State) -> i64 {
+pub fn micromod_calculate_song_duration(state: &mut State) -> i64 {
     let mut duration;
     let mut song_end;
     duration = 0;
@@ -852,7 +852,7 @@ pub unsafe fn micromod_calculate_song_duration(state: &mut State) -> i64 {
     duration
 }
 
-pub unsafe fn micromod_set_position(mut pos: i64, state: &mut State) {
+fn micromod_set_position(mut pos: i64, state: &mut State) {
     let mut chan_idx;
     let mut chan;
     if state.num_channels <= 0 {
