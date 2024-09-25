@@ -1,5 +1,4 @@
 #[derive(Copy, Clone, Default)]
-#[repr(C)]
 pub struct Channel {
     pub note: Note,
     pub period: u16,
@@ -31,7 +30,6 @@ pub struct Channel {
     pub arpeggio_add: i8,
 }
 #[derive(Copy, Clone, Default)]
-#[repr(C)]
 pub struct Note {
     pub key: u16,
     pub instrument: u8,
@@ -39,7 +37,6 @@ pub struct Note {
     pub param: u8,
 }
 #[derive(Copy, Clone)]
-#[repr(C)]
 pub struct Instrument {
     pub volume: u8,
     pub fine_tune: u8,
