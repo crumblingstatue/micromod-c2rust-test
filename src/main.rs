@@ -770,7 +770,7 @@ pub unsafe fn micromod_initialise(data: &[u8], sampling_rate: i64, state: &mut S
     sample_data_offset = 1084 + state.num_patterns * 64 * state.num_channels * 4;
     inst_idx = 1;
     while inst_idx < 32 {
-        inst = &mut *state.instruments.as_mut_ptr().offset(inst_idx as isize) as *mut Instrument;
+        inst = &mut state.instruments[inst_idx as usize];
         sample_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 12) * 2;
         fine_tune =
             (*state.module_data.offset((inst_idx * 30 + 14) as isize) as i32 & 0xf_i32) as i64;
