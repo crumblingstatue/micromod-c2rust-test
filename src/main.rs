@@ -714,7 +714,7 @@ pub enum InitError {
 }
 
 impl State<'_> {
-    pub unsafe fn init(data: &[u8], sampling_rate: i64) -> Result<State, InitError> {
+    pub unsafe fn init(data: &[u8], sample_rate: i64) -> Result<State, InitError> {
         let mut inst;
         let mut sample_data_offset;
         let mut inst_idx;
@@ -727,19 +727,12 @@ impl State<'_> {
         if num_channels <= 0 {
             return Err(InitError::ChannelNumIncorrect);
         }
-        if sampling_rate < 8000 {
+        if sample_rate < 8000 {
             return Err(InitError::SamplingRateIncorrect);
         }
         let module_data: *const i8 = data.as_ptr().cast();
-        let sample_rate = sampling_rate;
-        let sequence = std::slice::from_raw_parts(
-            (module_data as *const u8).offset(952),
-            data.len() - 952,
-        );
-        let pattern_data = std::slice::from_raw_parts(
-            (module_data as *const u8).offset(1084),
-            data.len() - 1084,
-        );
+        let sequence = &data[952..];
+        let pattern_data = &data[1084..];
         let mut state = State {
             sample_rate,
             gain: Default::default(),
