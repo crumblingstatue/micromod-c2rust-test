@@ -224,16 +224,16 @@ unsafe fn tone_portamento(chan: *mut Channel) {
     }
     (*chan).period = source as u16;
 }
-unsafe fn volume_slide(chan: *mut Channel, param: i64) {
+unsafe fn volume_slide(chan: &mut Channel, param: i64) {
     let mut volume;
-    volume = (*chan).volume as i64 + (param >> 4) - (param & 0xf_i32 as i64);
+    volume = chan.volume as i64 + (param >> 4) - (param & 0xf_i32 as i64);
     if volume < 0 {
         volume = 0;
     }
     if volume > 64 {
         volume = 64;
     }
-    (*chan).volume = volume as u8;
+    chan.volume = volume as u8;
 }
 unsafe fn waveform(phase: i64, type_0: i64, state: &mut State) -> i64 {
     let mut amplitude: i64 = 0;
@@ -444,27 +444,27 @@ unsafe fn channel_row(chan: *mut Channel, state: &mut State) {
     }
     update_frequency(chan, state);
 }
-unsafe fn channel_tick(chan: *mut Channel, state: &mut State) {
+unsafe fn channel_tick(chan: &mut Channel, state: &mut State) {
     let period;
-    let effect = (*chan).note.effect as i64;
-    let param = (*chan).note.param as i64;
-    let fresh3 = &mut (*chan).fx_count;
+    let effect = chan.note.effect as i64;
+    let param = chan.note.param as i64;
+    let fresh3 = &mut chan.fx_count;
     *fresh3 = (*fresh3).wrapping_add(1);
     match effect {
         1 => {
-            period = (*chan).period as i64 - param;
-            (*chan).period = (if period < 0 { 0 } else { period }) as u16;
+            period = chan.period as i64 - param;
+            chan.period = (if period < 0 { 0 } else { period }) as u16;
         }
         2 => {
-            period = (*chan).period as i64 + param;
-            (*chan).period = (if period > 65535 { 65535 } else { period }) as u16;
+            period = chan.period as i64 + param;
+            chan.period = (if period > 65535 { 65535 } else { period }) as u16;
         }
         3 => {
             tone_portamento(chan);
         }
         4 => {
-            let fresh4 = &mut (*chan).vibrato_phase;
-            *fresh4 = (*fresh4 as i32 + (*chan).vibrato_speed as i32) as u8;
+            let fresh4 = &mut chan.vibrato_phase;
+            *fresh4 = (*fresh4 as i32 + chan.vibrato_speed as i32) as u8;
             vibrato(chan, state);
         }
         5 => {
@@ -472,46 +472,46 @@ unsafe fn channel_tick(chan: *mut Channel, state: &mut State) {
             volume_slide(chan, param);
         }
         6 => {
-            let fresh5 = &mut (*chan).vibrato_phase;
-            *fresh5 = (*fresh5 as i32 + (*chan).vibrato_speed as i32) as u8;
+            let fresh5 = &mut chan.vibrato_phase;
+            *fresh5 = (*fresh5 as i32 + chan.vibrato_speed as i32) as u8;
             vibrato(chan, state);
             volume_slide(chan, param);
         }
         7 => {
-            let fresh6 = &mut (*chan).tremolo_phase;
-            *fresh6 = (*fresh6 as i32 + (*chan).tremolo_speed as i32) as u8;
+            let fresh6 = &mut chan.tremolo_phase;
+            *fresh6 = (*fresh6 as i32 + chan.tremolo_speed as i32) as u8;
             tremolo(chan, state);
         }
         10 => {
             volume_slide(chan, param);
         }
         14 => {
-            if (*chan).fx_count as i32 > 2 {
-                (*chan).fx_count = 0;
+            if chan.fx_count as i32 > 2 {
+                chan.fx_count = 0;
             }
-            if (*chan).fx_count as i32 == 0 {
-                (*chan).arpeggio_add = 0;
+            if chan.fx_count as i32 == 0 {
+                chan.arpeggio_add = 0;
             }
-            if (*chan).fx_count as i32 == 1 {
-                (*chan).arpeggio_add = (param >> 4) as i8;
+            if chan.fx_count as i32 == 1 {
+                chan.arpeggio_add = (param >> 4) as i8;
             }
-            if (*chan).fx_count as i32 == 2 {
-                (*chan).arpeggio_add = (param & 0xf_i32 as i64) as i8;
+            if chan.fx_count as i32 == 2 {
+                chan.arpeggio_add = (param & 0xf_i32 as i64) as i8;
             }
         }
         25 => {
-            if (*chan).fx_count as i64 >= param {
-                (*chan).fx_count = 0;
-                (*chan).sample_idx = 0;
+            if chan.fx_count as i64 >= param {
+                chan.fx_count = 0;
+                chan.sample_idx = 0;
             }
         }
         28 => {
-            if param == (*chan).fx_count as i64 {
-                (*chan).volume = 0;
+            if param == chan.fx_count as i64 {
+                chan.volume = 0;
             }
         }
         29 => {
-            if param == (*chan).fx_count as i64 {
+            if param == chan.fx_count as i64 {
                 trigger(chan, state);
             }
         }
