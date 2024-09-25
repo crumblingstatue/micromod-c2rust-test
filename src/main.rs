@@ -234,7 +234,7 @@ fn volume_slide(chan: &mut Channel, param: i64) {
     }
     chan.volume = volume as u8;
 }
-fn waveform(phase: i64, type_0: i64, state: &mut State) -> i64 {
+fn waveform(phase: i64, type_0: i64, random_seed: &mut i64) -> i64 {
     let mut amplitude: i64 = 0;
     match type_0 & 0x3 {
         0 => {
@@ -250,21 +250,27 @@ fn waveform(phase: i64, type_0: i64, state: &mut State) -> i64 {
             amplitude = 255 - ((phase & 0x20) << 4);
         }
         3 => {
-            amplitude = (state.random_seed >> 20) - 255;
-            state.random_seed = (state.random_seed * 65 + 17) & 0x1fffffff_i32 as i64;
+            amplitude = (*random_seed >> 20) - 255;
+            *random_seed = (*random_seed * 65 + 17) & 0x1fffffff_i32 as i64;
         }
         _ => {}
     }
     amplitude
 }
-fn vibrato(chan: &mut Channel, state: &mut State) {
-    chan.vibrato_add = ((waveform(chan.vibrato_phase as i64, chan.vibrato_type as i64, state)
-        * chan.vibrato_depth as i64)
+fn vibrato(chan: &mut Channel, random_seed: &mut i64) {
+    chan.vibrato_add = ((waveform(
+        chan.vibrato_phase as i64,
+        chan.vibrato_type as i64,
+        random_seed,
+    ) * chan.vibrato_depth as i64)
         >> 7) as i8;
 }
-fn tremolo(chan: &mut Channel, state: &mut State) {
-    chan.tremolo_add = ((waveform(chan.tremolo_phase as i64, chan.tremolo_type as i64, state)
-        * chan.tremolo_depth as i64)
+fn tremolo(chan: &mut Channel, random_seed: &mut i64) {
+    chan.tremolo_add = ((waveform(
+        chan.tremolo_phase as i64,
+        chan.tremolo_type as i64,
+        random_seed,
+    ) * chan.tremolo_depth as i64)
         >> 6) as i8;
 }
 fn trigger(channel: &mut Channel, instruments: &mut [Instrument]) {
@@ -331,10 +337,10 @@ fn channel_row(chan: &mut Channel, state: &mut State) {
             if param & 0xf_i32 as i64 > 0 {
                 chan.vibrato_depth = (param & 0xf_i32 as i64) as u8;
             }
-            vibrato(chan, state);
+            vibrato(chan, &mut state.random_seed);
         }
         6 => {
-            vibrato(chan, state);
+            vibrato(chan, &mut state.random_seed);
         }
         7 => {
             if param & 0xf0 > 0 {
@@ -343,7 +349,7 @@ fn channel_row(chan: &mut Channel, state: &mut State) {
             if param & 0xf_i32 as i64 > 0 {
                 chan.tremolo_depth = (param & 0xf_i32 as i64) as u8;
             }
-            tremolo(chan, state);
+            tremolo(chan, &mut state.random_seed);
         }
         8 => {
             if state.num_channels != 4 {
@@ -458,7 +464,7 @@ fn channel_tick(chan: &mut Channel, state: &mut State) {
         4 => {
             let fresh4 = &mut chan.vibrato_phase;
             *fresh4 = (*fresh4 as i32 + chan.vibrato_speed as i32) as u8;
-            vibrato(chan, state);
+            vibrato(chan, &mut state.random_seed);
         }
         5 => {
             tone_portamento(chan);
@@ -467,13 +473,13 @@ fn channel_tick(chan: &mut Channel, state: &mut State) {
         6 => {
             let fresh5 = &mut chan.vibrato_phase;
             *fresh5 = (*fresh5 as i32 + chan.vibrato_speed as i32) as u8;
-            vibrato(chan, state);
+            vibrato(chan, &mut state.random_seed);
             volume_slide(chan, param);
         }
         7 => {
             let fresh6 = &mut chan.tremolo_phase;
             *fresh6 = (*fresh6 as i32 + chan.tremolo_speed as i32) as u8;
-            tremolo(chan, state);
+            tremolo(chan, &mut state.random_seed);
         }
         10 => {
             volume_slide(chan, param);
