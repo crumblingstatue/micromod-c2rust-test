@@ -206,23 +206,23 @@ unsafe fn update_frequency(chan: &mut Channel, state: &mut State) {
     }
     chan.ampl = ((volume * state.gain) >> 5) as u8;
 }
-unsafe fn tone_portamento(chan: *mut Channel) {
+unsafe fn tone_portamento(chan: &mut Channel) {
     let mut source;
 
-    source = (*chan).period as i64;
-    let dest = (*chan).porta_period as i64;
+    source = chan.period as i64;
+    let dest = chan.porta_period as i64;
     if source < dest {
-        source += (*chan).porta_speed as i64;
+        source += chan.porta_speed as i64;
         if source > dest {
             source = dest;
         }
     } else if source > dest {
-        source -= (*chan).porta_speed as i64;
+        source -= chan.porta_speed as i64;
         if source < dest {
             source = dest;
         }
     }
-    (*chan).period = source as u16;
+    chan.period = source as u16;
 }
 unsafe fn volume_slide(chan: &mut Channel, param: i64) {
     let mut volume;
@@ -258,54 +258,48 @@ unsafe fn waveform(phase: i64, type_0: i64, state: &mut State) -> i64 {
     }
     amplitude
 }
-unsafe fn vibrato(chan: *mut Channel, state: &mut State) {
-    (*chan).vibrato_add = ((waveform(
-        (*chan).vibrato_phase as i64,
-        (*chan).vibrato_type as i64,
-        state,
-    ) * (*chan).vibrato_depth as i64)
+unsafe fn vibrato(chan: &mut Channel, state: &mut State) {
+    chan.vibrato_add = ((waveform(chan.vibrato_phase as i64, chan.vibrato_type as i64, state)
+        * chan.vibrato_depth as i64)
         >> 7) as i8;
 }
-unsafe fn tremolo(chan: *mut Channel, state: &mut State) {
-    (*chan).tremolo_add = ((waveform(
-        (*chan).tremolo_phase as i64,
-        (*chan).tremolo_type as i64,
-        state,
-    ) * (*chan).tremolo_depth as i64)
+unsafe fn tremolo(chan: &mut Channel, state: &mut State) {
+    chan.tremolo_add = ((waveform(chan.tremolo_phase as i64, chan.tremolo_type as i64, state)
+        * chan.tremolo_depth as i64)
         >> 6) as i8;
 }
-unsafe fn trigger(channel: *mut Channel, state: &mut State) {
+unsafe fn trigger(channel: &mut Channel, state: &mut State) {
     let period;
 
-    let ins = (*channel).note.instrument as i64;
+    let ins = channel.note.instrument as i64;
     if ins > 0 && ins < 32 {
-        (*channel).assigned = ins as u8;
-        (*channel).sample_offset = 0;
-        (*channel).fine_tune = state.instruments[ins as usize].fine_tune;
-        (*channel).volume = state.instruments[ins as usize].volume;
-        if state.instruments[ins as usize].loop_length > 0 && (*channel).instrument as i32 > 0 {
-            (*channel).instrument = ins as u8;
+        channel.assigned = ins as u8;
+        channel.sample_offset = 0;
+        channel.fine_tune = state.instruments[ins as usize].fine_tune;
+        channel.volume = state.instruments[ins as usize].volume;
+        if state.instruments[ins as usize].loop_length > 0 && channel.instrument as i32 > 0 {
+            channel.instrument = ins as u8;
         }
     }
-    if (*channel).note.effect as i32 == 0x9_i32 {
-        (*channel).sample_offset = (((*channel).note.param as i32 & 0xff_i32) << 8) as u64;
-    } else if (*channel).note.effect as i32 == 0x15_i32 {
-        (*channel).fine_tune = (*channel).note.param;
+    if channel.note.effect as i32 == 0x9_i32 {
+        channel.sample_offset = ((channel.note.param as i32 & 0xff_i32) << 8) as u64;
+    } else if channel.note.effect as i32 == 0x15_i32 {
+        channel.fine_tune = channel.note.param;
     }
-    if (*channel).note.key as i32 > 0 {
-        period = (((*channel).note.key as i32
-            * FINE_TUNING[((*channel).fine_tune as i32 & 0xf_i32) as usize] as i32)
+    if channel.note.key as i32 > 0 {
+        period = ((channel.note.key as i32
+            * FINE_TUNING[(channel.fine_tune as i32 & 0xf_i32) as usize] as i32)
             >> 11) as i64;
-        (*channel).porta_period = ((period >> 1) + (period & 1)) as u16;
-        if (*channel).note.effect as i32 != 0x3_i32 && (*channel).note.effect as i32 != 0x5_i32 {
-            (*channel).instrument = (*channel).assigned;
-            (*channel).period = (*channel).porta_period;
-            (*channel).sample_idx = (*channel).sample_offset << 14;
-            if ((*channel).vibrato_type as i32) < 4 {
-                (*channel).vibrato_phase = 0;
+        channel.porta_period = ((period >> 1) + (period & 1)) as u16;
+        if channel.note.effect as i32 != 0x3_i32 && channel.note.effect as i32 != 0x5_i32 {
+            channel.instrument = channel.assigned;
+            channel.period = channel.porta_period;
+            channel.sample_idx = channel.sample_offset << 14;
+            if (channel.vibrato_type as i32) < 4 {
+                channel.vibrato_phase = 0;
             }
-            if ((*channel).tremolo_type as i32) < 4 {
-                (*channel).tremolo_phase = 0;
+            if (channel.tremolo_type as i32) < 4 {
+                channel.tremolo_phase = 0;
             }
         }
     }
@@ -824,18 +818,18 @@ pub unsafe fn micromod_set_position(mut pos: i64, state: &mut State) {
     state.random_seed = 0xabcdef_i32 as i64;
     chan_idx = 0;
     while chan_idx < state.num_channels {
-        chan = &mut *state.channels.as_mut_ptr().offset(chan_idx as isize) as *mut Channel;
-        (*chan).id = chan_idx as u8;
-        let fresh15 = &mut (*chan).assigned;
+        chan = &mut *state.channels.as_mut_ptr().offset(chan_idx as isize);
+        chan.id = chan_idx as u8;
+        let fresh15 = &mut chan.assigned;
         *fresh15 = 0;
-        (*chan).instrument = *fresh15;
-        (*chan).volume = 0;
+        chan.instrument = *fresh15;
+        chan.volume = 0;
         match chan_idx & 0x3 {
             0 | 3 => {
-                (*chan).panning = 0;
+                chan.panning = 0;
             }
             1 | 2 => {
-                (*chan).panning = 127;
+                chan.panning = 127;
             }
             _ => {}
         }
