@@ -86,42 +86,11 @@ pub struct State<'src> {
     channels: [Channel; 16],
     instruments: [Instrument; 32],
     module_data: *const i8,
-    pattern_data: Option<&'src [u8]>,
-    sequence: Option<&'src [u8]>,
+    pattern_data: &'src [u8],
+    sequence: &'src [u8],
     song_length: i64,
-    restart: i64,
     num_patterns: i64,
     num_channels: i64,
-}
-
-impl Default for State<'_> {
-    fn default() -> Self {
-        Self {
-            sample_rate: Default::default(),
-            gain: Default::default(),
-            c2_rate: Default::default(),
-            tick_len: Default::default(),
-            tick_offset: Default::default(),
-            pattern: Default::default(),
-            break_pattern: Default::default(),
-            row: Default::default(),
-            next_row: Default::default(),
-            tick: Default::default(),
-            speed: Default::default(),
-            pl_count: Default::default(),
-            pl_channel: Default::default(),
-            random_seed: Default::default(),
-            channels: Default::default(),
-            instruments: Default::default(),
-            module_data: std::ptr::null(),
-            pattern_data: None,
-            sequence: None,
-            song_length: Default::default(),
-            restart: Default::default(),
-            num_patterns: Default::default(),
-            num_channels: Default::default(),
-        }
-    }
 }
 
 unsafe fn calculate_num_patterns(module_header: *const i8) -> i64 {
@@ -577,13 +546,13 @@ fn sequence_row(state: &mut State) -> i64 {
     if state.next_row >= 64 {
         state.next_row = -1_i32 as i64;
     }
-    pat_offset = ((state.sequence.unwrap()[state.pattern as usize] as i32 * 64) as i64 + state.row)
+    pat_offset = ((state.sequence[state.pattern as usize] as i32 * 64) as i64 + state.row)
         * state.num_channels
         * 4;
     chan_idx = 0;
     while chan_idx < state.num_channels {
         note = &mut (state.channels[chan_idx as usize]).note;
-        let pattern_data = state.pattern_data.unwrap();
+        let pattern_data = state.pattern_data;
         note.key = ((pattern_data[pat_offset as usize] as i32 & 0xf_i32) << 8) as u16;
         let fresh7 = &mut note.key;
         *fresh7 = (*fresh7 as i32 | pattern_data[(pat_offset + 1) as usize] as i32) as u16;
@@ -754,30 +723,47 @@ impl State<'_> {
         let mut fine_tune;
         let mut loop_start;
         let mut loop_length;
-        let mut state = State::default();
-        state.num_channels = calculate_num_channels(data.as_ptr().cast());
-        if state.num_channels <= 0 {
-            state.num_channels = 0;
+        let num_channels = calculate_num_channels(data.as_ptr().cast());
+        if num_channels <= 0 {
             return Err(InitError::ChannelNumIncorrect);
         }
         if sampling_rate < 8000 {
             return Err(InitError::SamplingRateIncorrect);
         }
-        state.module_data = data.as_ptr().cast();
-        state.sample_rate = sampling_rate;
-        state.song_length = (*state.module_data.offset(950) as i32 & 0x7f_i32) as i64;
-        state.restart = (*state.module_data.offset(951) as i32 & 0x7f_i32) as i64;
-        if state.restart >= state.song_length {
-            state.restart = 0;
-        }
-        state.sequence = Some(std::slice::from_raw_parts(
-            (state.module_data as *const u8).offset(952),
+        let module_data: *const i8 = data.as_ptr().cast();
+        let sample_rate = sampling_rate;
+        let sequence = std::slice::from_raw_parts(
+            (module_data as *const u8).offset(952),
             data.len() - 952,
-        ));
-        state.pattern_data = Some(std::slice::from_raw_parts(
-            (state.module_data as *const u8).offset(1084),
+        );
+        let pattern_data = std::slice::from_raw_parts(
+            (module_data as *const u8).offset(1084),
             data.len() - 1084,
-        ));
+        );
+        let mut state = State {
+            sample_rate,
+            gain: Default::default(),
+            c2_rate: Default::default(),
+            tick_len: Default::default(),
+            tick_offset: Default::default(),
+            pattern: Default::default(),
+            break_pattern: Default::default(),
+            row: Default::default(),
+            next_row: Default::default(),
+            tick: Default::default(),
+            speed: Default::default(),
+            pl_count: Default::default(),
+            pl_channel: Default::default(),
+            random_seed: Default::default(),
+            channels: Default::default(),
+            instruments: Default::default(),
+            module_data,
+            pattern_data,
+            sequence,
+            song_length: Default::default(),
+            num_patterns: Default::default(),
+            num_channels,
+        };
         state.num_patterns = calculate_num_patterns(state.module_data);
         sample_data_offset = 1084 + state.num_patterns * 64 * state.num_channels * 4;
         inst_idx = 1;
