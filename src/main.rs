@@ -602,20 +602,22 @@ unsafe fn sequence_tick(state: &mut State) -> i64 {
     }
     song_end
 }
-unsafe fn resample(chan: &mut Channel, buf: *mut i16, offset: i64, count: i64, state: &mut State) {
+unsafe fn resample(
+    chan: &mut Channel,
+    buf: &mut [i16],
+    offset: i64,
+    count: i64,
+    instruments: &mut [Instrument],
+) {
     let mut epos;
     let mut buf_idx: u64 = (offset << 1) as u64;
     let buf_end: u64 = ((offset + count) << 1) as u64;
     let mut sidx: u64 = chan.sample_idx;
     let step: u64 = chan.step;
-    let llen: u64 = state.instruments[chan.instrument as usize].loop_length;
-    let lep1: u64 = (state.instruments[chan.instrument as usize].loop_start).wrapping_add(llen);
-    let sdat: *const i8 = state.instruments[chan.instrument as usize].sample_data;
-    let mut ampl: i16 = (if !buf.is_null() && chan.mute == 0 {
-        chan.ampl as i32
-    } else {
-        0
-    }) as i16;
+    let llen: u64 = instruments[chan.instrument as usize].loop_length;
+    let lep1: u64 = (instruments[chan.instrument as usize].loop_start).wrapping_add(llen);
+    let sdat: *const i8 = instruments[chan.instrument as usize].sample_data;
+    let mut ampl: i16 = (if chan.mute == 0 { chan.ampl as i32 } else { 0 }) as i16;
     let lamp: i16 = ((ampl as i32 * (127_i32 - chan.panning as i32)) >> 5) as i16;
     let ramp: i16 = ((ampl as i32 * chan.panning as i32) >> 5) as i16;
     while buf_idx < buf_end {
@@ -639,11 +641,11 @@ unsafe fn resample(chan: &mut Channel, buf: *mut i16, offset: i64, count: i64, s
                     ampl = *sdat.offset((sidx >> 14) as isize) as i16;
                     let fresh9 = buf_idx;
                     buf_idx = buf_idx.wrapping_add(1);
-                    let fresh10 = &mut (*buf.offset(fresh9 as isize));
+                    let fresh10 = &mut (buf[fresh9 as usize]);
                     *fresh10 = (*fresh10 as i32 + ((ampl as i32 * lamp as i32) >> 2)) as i16;
                     let fresh11 = buf_idx;
                     buf_idx = buf_idx.wrapping_add(1);
-                    let fresh12 = &mut (*buf.offset(fresh11 as isize));
+                    let fresh12 = &mut (buf[fresh11 as usize]);
                     *fresh12 = (*fresh12 as i32 + ((ampl as i32 * ramp as i32) >> 2)) as i16;
                     sidx = sidx.wrapping_add(step);
                 }
@@ -652,7 +654,7 @@ unsafe fn resample(chan: &mut Channel, buf: *mut i16, offset: i64, count: i64, s
                     buf_idx = buf_idx.wrapping_add(1);
                 }
                 while sidx < epos {
-                    let fresh13 = &mut (*buf.offset(buf_idx as isize));
+                    let fresh13 = &mut (buf[buf_idx as usize]);
                     *fresh13 = (*fresh13 as i32
                         + *sdat.offset((sidx >> 14) as isize) as i32 * ampl as i32)
                         as i16;
@@ -856,7 +858,7 @@ pub fn micromod_set_gain(value: i64, state: &mut State) {
     state.gain = value;
 }
 
-pub unsafe fn micromod_get_audio(output_buffer: *mut i16, mut count: i64, state: &mut State) {
+pub unsafe fn micromod_get_audio(output_buffer: &mut [i16], mut count: i64, state: &mut State) {
     let mut offset;
     let mut remain;
     let mut chan_idx;
@@ -872,11 +874,11 @@ pub unsafe fn micromod_get_audio(output_buffer: *mut i16, mut count: i64, state:
         chan_idx = 0;
         while chan_idx < state.num_channels {
             resample(
-                &mut *state.channels.as_mut_ptr().offset(chan_idx as isize),
+                &mut state.channels[chan_idx as usize],
                 output_buffer,
                 offset,
                 remain,
-                state,
+                &mut state.instruments,
             );
             chan_idx += 1;
         }
@@ -901,7 +903,7 @@ fn main() {
         dbg!(micromod_initialise(&mod_data, 48_000, &mut state));
         for _ in 0..1000 {
             let mut out = [0; 4096];
-            micromod_get_audio(out.as_mut_ptr(), 2048, &mut state);
+            micromod_get_audio(&mut out, 2048, &mut state);
             for sample in out {
                 writer.write_all(sample.to_le_bytes().as_slice()).unwrap();
             }
