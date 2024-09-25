@@ -85,7 +85,7 @@ pub struct State<'src> {
     random_seed: i64,
     channels: [Channel; 16],
     instruments: [Instrument; 32],
-    module_data: *const i8,
+    module_data: &'src [i8],
     pattern_data: &'src [u8],
     sequence: &'src [u8],
     song_length: i64,
@@ -730,7 +730,6 @@ impl State<'_> {
         if sample_rate < 8000 {
             return Err(InitError::SamplingRateIncorrect);
         }
-        let module_data: *const i8 = data.as_ptr().cast();
         let sequence = &data[952..];
         let pattern_data = &data[1084..];
         let mut state = State {
@@ -750,27 +749,36 @@ impl State<'_> {
             random_seed: Default::default(),
             channels: Default::default(),
             instruments: Default::default(),
-            module_data,
+            module_data: bytemuck::cast_slice(data),
             pattern_data,
             sequence,
             song_length: Default::default(),
             num_patterns: Default::default(),
             num_channels,
         };
-        state.num_patterns = calculate_num_patterns(state.module_data);
+        state.num_patterns = calculate_num_patterns(state.module_data.as_ptr());
         sample_data_offset = 1084 + state.num_patterns * 64 * state.num_channels * 4;
         inst_idx = 1;
         while inst_idx < 32 {
             inst = &mut state.instruments[inst_idx as usize];
-            sample_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 12) * 2;
-            fine_tune =
-                (*state.module_data.offset((inst_idx * 30 + 14) as isize) as i32 & 0xf_i32) as i64;
+            sample_length =
+                unsigned_short_big_endian(state.module_data.as_ptr(), inst_idx * 30 + 12) * 2;
+            fine_tune = (*state
+                .module_data
+                .as_ptr()
+                .offset((inst_idx * 30 + 14) as isize) as i32
+                & 0xf_i32) as i64;
             inst.fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
-            volume =
-                (*state.module_data.offset((inst_idx * 30 + 15) as isize) as i32 & 0x7f_i32) as i64;
+            volume = (*state
+                .module_data
+                .as_ptr()
+                .offset((inst_idx * 30 + 15) as isize) as i32
+                & 0x7f_i32) as i64;
             inst.volume = (if volume > 64 { 64 } else { volume }) as u8;
-            loop_start = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 16) * 2;
-            loop_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 18) * 2;
+            loop_start =
+                unsigned_short_big_endian(state.module_data.as_ptr(), inst_idx * 30 + 16) * 2;
+            loop_length =
+                unsigned_short_big_endian(state.module_data.as_ptr(), inst_idx * 30 + 18) * 2;
             if loop_start + loop_length > sample_length {
                 if loop_start / 2 + loop_length <= sample_length {
                     loop_start /= 2;
@@ -784,7 +792,10 @@ impl State<'_> {
             }
             inst.loop_start = (loop_start << 14) as u64;
             inst.loop_length = (loop_length << 14) as u64;
-            inst.sample_data = state.module_data.offset(sample_data_offset as isize);
+            inst.sample_data = state
+                .module_data
+                .as_ptr()
+                .offset(sample_data_offset as isize);
             sample_data_offset += sample_length;
             inst_idx += 1;
         }
@@ -813,7 +824,7 @@ pub unsafe fn micromod_get_string(instrument: i64, string: *mut i8, state: &mut 
     }
     index = 0;
     while index < length {
-        character = *state.module_data.offset((offset + index) as isize) as i64;
+        character = *state.module_data.as_ptr().offset((offset + index) as isize) as i64;
         if !(32..=126).contains(&character) {
             character = ' ' as i32 as i64;
         }
