@@ -1,10 +1,7 @@
 #![allow(
-    dead_code,
-    mutable_transmutes,
     non_camel_case_types,
     non_snake_case,
     non_upper_case_globals,
-    unused_assignments,
     unused_mut
 )]
 #![register_tool(c2rust)]
@@ -172,9 +169,9 @@ pub struct State {
 }
 
 unsafe extern "C" fn calculate_num_patterns(mut module_header: *mut libc::c_schar) -> libc::c_long {
-    let mut num_patterns_0: libc::c_long = 0;
-    let mut order_entry: libc::c_long = 0;
-    let mut pattern_0: libc::c_long = 0;
+    let mut num_patterns_0;
+    let mut order_entry;
+    let mut pattern_0;
     num_patterns_0 = 0 as libc::c_int as libc::c_long;
     pattern_0 = 0 as libc::c_int as libc::c_long;
     while pattern_0 < 128 as libc::c_int as libc::c_long {
@@ -252,9 +249,9 @@ unsafe extern "C" fn set_tempo(mut tempo: libc::c_long, state: &mut State) {
         ((state.sample_rate << 1 as libc::c_int) + (state.sample_rate >> 1 as libc::c_int)) / tempo;
 }
 unsafe extern "C" fn update_frequency(mut chan: *mut channel, state: &mut State) {
-    let mut period: libc::c_long = 0;
-    let mut volume: libc::c_long = 0;
-    let mut freq: libc::c_ulong = 0;
+    let mut period;
+    let mut volume;
+    let mut freq;
     period = ((*chan).period as libc::c_int + (*chan).vibrato_add as libc::c_int) as libc::c_long;
     period =
         period * arp_tuning[(*chan).arpeggio_add as usize] as libc::c_long >> 11 as libc::c_int;
@@ -274,8 +271,8 @@ unsafe extern "C" fn update_frequency(mut chan: *mut channel, state: &mut State)
     (*chan).ampl = (volume * state.gain >> 5 as libc::c_int) as libc::c_uchar;
 }
 unsafe extern "C" fn tone_portamento(mut chan: *mut channel) {
-    let mut source: libc::c_long = 0;
-    let mut dest: libc::c_long = 0;
+    let mut source;
+    let mut dest;
     source = (*chan).period as libc::c_long;
     dest = (*chan).porta_period as libc::c_long;
     if source < dest {
@@ -292,7 +289,7 @@ unsafe extern "C" fn tone_portamento(mut chan: *mut channel) {
     (*chan).period = source as libc::c_ushort;
 }
 unsafe extern "C" fn volume_slide(mut chan: *mut channel, mut param: libc::c_long) {
-    let mut volume: libc::c_long = 0;
+    let mut volume;
     volume = (*chan).volume as libc::c_long + (param >> 4 as libc::c_int)
         - (param & 0xf as libc::c_int as libc::c_long);
     if volume < 0 as libc::c_int as libc::c_long {
@@ -355,8 +352,8 @@ unsafe extern "C" fn tremolo(mut chan: *mut channel, state: &mut State) {
         >> 6 as libc::c_int) as libc::c_schar;
 }
 unsafe extern "C" fn trigger(mut channel: *mut channel, state: &mut State) {
-    let mut period: libc::c_long = 0;
-    let mut ins: libc::c_long = 0;
+    let mut period;
+    let mut ins;
     ins = (*channel).note.instrument as libc::c_long;
     if ins > 0 as libc::c_int as libc::c_long && ins < 32 as libc::c_int as libc::c_long {
         (*channel).assigned = ins as libc::c_uchar;
@@ -399,10 +396,10 @@ unsafe extern "C" fn trigger(mut channel: *mut channel, state: &mut State) {
     }
 }
 unsafe extern "C" fn channel_row(mut chan: *mut channel, state: &mut State) {
-    let mut effect: libc::c_long = 0;
-    let mut param: libc::c_long = 0;
-    let mut volume: libc::c_long = 0;
-    let mut period: libc::c_long = 0;
+    let mut effect;
+    let mut param;
+    let mut volume;
+    let mut period;
     effect = (*chan).note.effect as libc::c_long;
     param = (*chan).note.param as libc::c_long;
     let ref mut fresh0 = (*chan).fx_count;
@@ -566,9 +563,9 @@ unsafe extern "C" fn channel_row(mut chan: *mut channel, state: &mut State) {
     update_frequency(chan, state);
 }
 unsafe extern "C" fn channel_tick(mut chan: *mut channel, state: &mut State) {
-    let mut effect: libc::c_long = 0;
-    let mut param: libc::c_long = 0;
-    let mut period: libc::c_long = 0;
+    let mut effect;
+    let mut param;
+    let mut period;
     effect = (*chan).note.effect as libc::c_long;
     param = (*chan).note.param as libc::c_long;
     let ref mut fresh3 = (*chan).fx_count;
@@ -657,12 +654,12 @@ unsafe extern "C" fn channel_tick(mut chan: *mut channel, state: &mut State) {
     }
 }
 unsafe extern "C" fn sequence_row(state: &mut State) -> libc::c_long {
-    let mut song_end: libc::c_long = 0;
-    let mut chan_idx: libc::c_long = 0;
-    let mut pat_offset: libc::c_long = 0;
-    let mut effect: libc::c_long = 0;
-    let mut param: libc::c_long = 0;
-    let mut note: *mut note = 0 as *mut note;
+    let mut song_end;
+    let mut chan_idx;
+    let mut pat_offset;
+    let mut effect;
+    let mut param;
+    let mut note;
     song_end = 0 as libc::c_int as libc::c_long;
     if state.next_row < 0 as libc::c_int as libc::c_long {
         state.break_pattern = state.pattern + 1 as libc::c_int as libc::c_long;
@@ -736,8 +733,8 @@ unsafe extern "C" fn sequence_row(state: &mut State) -> libc::c_long {
     return song_end;
 }
 unsafe extern "C" fn sequence_tick(state: &mut State) -> libc::c_long {
-    let mut song_end: libc::c_long = 0;
-    let mut chan_idx: libc::c_long = 0;
+    let mut song_end;
+    let mut chan_idx;
     song_end = 0 as libc::c_int as libc::c_long;
     state.tick -= 1;
     if state.tick <= 0 as libc::c_int as libc::c_long {
@@ -762,7 +759,7 @@ unsafe extern "C" fn resample(
     mut count: libc::c_long,
     state: &mut State,
 ) {
-    let mut epos: libc::c_ulong = 0;
+    let mut epos;
     let mut buf_idx: libc::c_ulong = (offset << 1 as libc::c_int) as libc::c_ulong;
     let mut buf_end: libc::c_ulong = (offset + count << 1 as libc::c_int) as libc::c_ulong;
     let mut sidx: libc::c_ulong = (*chan).sample_idx;
@@ -844,9 +841,9 @@ pub unsafe extern "C" fn micromod_get_version() -> *const libc::c_char {
 pub unsafe extern "C" fn micromod_calculate_mod_file_len(
     mut module_header: *mut libc::c_schar,
 ) -> libc::c_long {
-    let mut length: libc::c_long = 0;
-    let mut numchan: libc::c_long = 0;
-    let mut inst_idx: libc::c_long = 0;
+    let mut length;
+    let mut numchan;
+    let mut inst_idx;
     numchan = calculate_num_channels(module_header);
     if numchan <= 0 as libc::c_int as libc::c_long {
         return -(1 as libc::c_int) as libc::c_long;
@@ -872,14 +869,14 @@ pub unsafe extern "C" fn micromod_initialise(
     mut sampling_rate: libc::c_long,
     state: &mut State,
 ) -> libc::c_long {
-    let mut inst: *mut instrument = 0 as *mut instrument;
-    let mut sample_data_offset: libc::c_long = 0;
-    let mut inst_idx: libc::c_long = 0;
-    let mut sample_length: libc::c_long = 0;
-    let mut volume: libc::c_long = 0;
-    let mut fine_tune: libc::c_long = 0;
-    let mut loop_start: libc::c_long = 0;
-    let mut loop_length: libc::c_long = 0;
+    let mut inst;
+    let mut sample_data_offset;
+    let mut inst_idx;
+    let mut sample_length;
+    let mut volume;
+    let mut fine_tune;
+    let mut loop_start;
+    let mut loop_length;
     num_channels = calculate_num_channels(data);
     if num_channels <= 0 as libc::c_int as libc::c_long {
         num_channels = 0 as libc::c_int as libc::c_long;
@@ -975,10 +972,10 @@ pub unsafe extern "C" fn micromod_get_string(
     mut instrument: libc::c_long,
     mut string: *mut libc::c_char,
 ) {
-    let mut index: libc::c_long = 0;
-    let mut offset: libc::c_long = 0;
-    let mut length: libc::c_long = 0;
-    let mut character: libc::c_long = 0;
+    let mut index;
+    let mut offset;
+    let mut length;
+    let mut character;
     if num_channels <= 0 as libc::c_int as libc::c_long {
         *string.offset(0 as libc::c_int as isize) = 0 as libc::c_int as libc::c_char;
         return;
@@ -1008,8 +1005,8 @@ pub unsafe extern "C" fn micromod_get_string(
 }
 #[no_mangle]
 pub unsafe extern "C" fn micromod_calculate_song_duration(state: &mut State) -> libc::c_long {
-    let mut duration: libc::c_long = 0;
-    let mut song_end: libc::c_long = 0;
+    let mut duration;
+    let mut song_end;
     duration = 0 as libc::c_int as libc::c_long;
     if num_channels > 0 as libc::c_int as libc::c_long {
         micromod_set_position(0 as libc::c_int as libc::c_long, state);
@@ -1024,8 +1021,8 @@ pub unsafe extern "C" fn micromod_calculate_song_duration(state: &mut State) -> 
 }
 #[no_mangle]
 pub unsafe extern "C" fn micromod_set_position(mut pos: libc::c_long, state: &mut State) {
-    let mut chan_idx: libc::c_long = 0;
-    let mut chan: *mut channel = 0 as *mut channel;
+    let mut chan_idx;
+    let mut chan;
     if num_channels <= 0 as libc::c_int as libc::c_long {
         return;
     }
@@ -1067,7 +1064,7 @@ pub unsafe extern "C" fn micromod_mute_channel(
     mut channel: libc::c_long,
     state: &mut State,
 ) -> libc::c_long {
-    let mut chan_idx: libc::c_long = 0;
+    let mut chan_idx;
     if channel < 0 as libc::c_int as libc::c_long {
         chan_idx = 0 as libc::c_int as libc::c_long;
         while chan_idx < num_channels {
@@ -1089,9 +1086,9 @@ pub unsafe extern "C" fn micromod_get_audio(
     mut count: libc::c_long,
     state: &mut State,
 ) {
-    let mut offset: libc::c_long = 0;
-    let mut remain: libc::c_long = 0;
-    let mut chan_idx: libc::c_long = 0;
+    let mut offset;
+    let mut remain;
+    let mut chan_idx;
     if num_channels <= 0 as libc::c_int as libc::c_long {
         return;
     }
