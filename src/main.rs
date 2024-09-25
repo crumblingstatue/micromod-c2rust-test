@@ -267,16 +267,16 @@ fn tremolo(chan: &mut Channel, state: &mut State) {
         * chan.tremolo_depth as i64)
         >> 6) as i8;
 }
-fn trigger(channel: &mut Channel, state: &mut State) {
+fn trigger(channel: &mut Channel, instruments: &mut [Instrument]) {
     let period;
 
     let ins = channel.note.instrument as i64;
     if ins > 0 && ins < 32 {
         channel.assigned = ins as u8;
         channel.sample_offset = 0;
-        channel.fine_tune = state.instruments[ins as usize].fine_tune;
-        channel.volume = state.instruments[ins as usize].volume;
-        if state.instruments[ins as usize].loop_length > 0 && channel.instrument as i32 > 0 {
+        channel.fine_tune = instruments[ins as usize].fine_tune;
+        channel.volume = instruments[ins as usize].volume;
+        if instruments[ins as usize].loop_length > 0 && channel.instrument as i32 > 0 {
             channel.instrument = ins as u8;
         }
     }
@@ -316,7 +316,7 @@ fn channel_row(chan: &mut Channel, state: &mut State) {
     *fresh2 = *fresh1;
     chan.vibrato_add = *fresh2;
     if !(effect == 0x1d_i32 as i64 && param > 0) {
-        trigger(chan, state);
+        trigger(chan, &mut state.instruments);
     }
     match effect {
         3 => {
@@ -505,7 +505,7 @@ fn channel_tick(chan: &mut Channel, state: &mut State) {
         }
         29 => {
             if param == chan.fx_count as i64 {
-                trigger(chan, state);
+                trigger(chan, &mut state.instruments);
             }
         }
         _ => {}
