@@ -45,7 +45,7 @@ pub struct Instrument {
     pub fine_tune: u8,
     pub loop_start: u64,
     pub loop_length: u64,
-    pub sample_data: *mut i8,
+    pub sample_data: *const i8,
 }
 
 impl Default for Instrument {
@@ -149,9 +149,9 @@ pub struct State {
     random_seed: i64,
     channels: [Channel; 16],
     instruments: [Instrument; 32],
-    module_data: *mut i8,
-    pattern_data: *mut u8,
-    sequence: *mut u8,
+    module_data: *const i8,
+    pattern_data: *const u8,
+    sequence: *const u8,
     song_length: i64,
     restart: i64,
     num_patterns: i64,
@@ -188,7 +188,7 @@ impl Default for State {
     }
 }
 
-unsafe fn calculate_num_patterns(module_header: *mut i8) -> i64 {
+unsafe fn calculate_num_patterns(module_header: *const i8) -> i64 {
     let mut num_patterns_0;
     let mut order_entry;
     let mut pattern_0;
@@ -204,7 +204,7 @@ unsafe fn calculate_num_patterns(module_header: *mut i8) -> i64 {
     }
     return num_patterns_0;
 }
-unsafe fn calculate_num_channels(module_header: *mut i8) -> i64 {
+unsafe fn calculate_num_channels(module_header: *const i8) -> i64 {
     let mut numchan: i64 = 0;
     let mut current_block_3: u64;
     match (*module_header.offset(1082 as i32 as isize) as i32) << 8 as i32
@@ -251,7 +251,7 @@ unsafe fn calculate_num_channels(module_header: *mut i8) -> i64 {
     }
     return numchan;
 }
-unsafe fn unsigned_short_big_endian(buf: *mut i8, offset: i64) -> i64 {
+unsafe fn unsigned_short_big_endian(buf: *const i8, offset: i64) -> i64 {
     return ((*buf.offset(offset as isize) as i32 & 0xff as i32) << 8 as i32
         | *buf.offset((offset + 1 as i32 as i64) as isize) as i32 & 0xff as i32) as i64;
 }
@@ -746,7 +746,7 @@ unsafe fn resample(chan: *mut Channel, buf: *mut i16, offset: i64, count: i64, s
     let step: u64 = (*chan).step;
     let llen: u64 = state.instruments[(*chan).instrument as usize].loop_length;
     let lep1: u64 = (state.instruments[(*chan).instrument as usize].loop_start).wrapping_add(llen);
-    let sdat: *mut i8 = state.instruments[(*chan).instrument as usize].sample_data;
+    let sdat: *const i8 = state.instruments[(*chan).instrument as usize].sample_data;
     let mut ampl: i16 = (if !buf.is_null() && (*chan).mute == 0 {
         (*chan).ampl as i32
     } else {
@@ -830,7 +830,7 @@ pub unsafe fn micromod_calculate_mod_file_len(module_header: *mut i8) -> i64 {
     return length;
 }
 
-pub unsafe fn micromod_initialise(data: *mut i8, sampling_rate: i64, state: &mut State) -> i64 {
+pub unsafe fn micromod_initialise(data: *const i8, sampling_rate: i64, state: &mut State) -> i64 {
     let mut inst;
     let mut sample_data_offset;
     let mut inst_idx;
