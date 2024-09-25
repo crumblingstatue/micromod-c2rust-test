@@ -867,7 +867,7 @@ pub unsafe fn micromod_set_position(mut pos: i64, state: &mut State) {
     state.random_seed = 0xabcdef_i32 as i64;
     chan_idx = 0;
     while chan_idx < state.num_channels {
-        chan = &mut *state.channels.as_mut_ptr().offset(chan_idx as isize);
+        chan = &mut state.channels[chan_idx as usize];
         chan.id = chan_idx as u8;
         let fresh15 = &mut chan.assigned;
         *fresh15 = 0;
