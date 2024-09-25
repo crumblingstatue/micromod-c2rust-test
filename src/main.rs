@@ -52,7 +52,7 @@ impl Default for Instrument {
             fine_tune: Default::default(),
             loop_start: Default::default(),
             loop_length: Default::default(),
-            sample_data: std::ptr::null_mut(),
+            sample_data: std::ptr::null(),
         }
     }
 }
@@ -113,7 +113,7 @@ impl Default for State<'_> {
             random_seed: Default::default(),
             channels: Default::default(),
             instruments: Default::default(),
-            module_data: std::ptr::null_mut(),
+            module_data: std::ptr::null(),
             pattern_data: None,
             sequence: None,
             song_length: Default::default(),
