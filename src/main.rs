@@ -448,7 +448,14 @@ fn channel_row(chan: &mut Channel, state: &mut State) {
         &mut state.c2_rate,
     );
 }
-fn channel_tick(chan: &mut Channel, state: &mut State) {
+fn channel_tick(
+    chan: &mut Channel,
+    sample_rate: &mut i64,
+    gain: &mut i64,
+    c2_rate: &mut i64,
+    random_seed: &mut i64,
+    instruments: &mut [Instrument],
+) {
     let period;
     let effect = chan.note.effect as i64;
     let param = chan.note.param as i64;
@@ -469,7 +476,7 @@ fn channel_tick(chan: &mut Channel, state: &mut State) {
         4 => {
             let fresh4 = &mut chan.vibrato_phase;
             *fresh4 = (*fresh4 as i32 + chan.vibrato_speed as i32) as u8;
-            vibrato(chan, &mut state.random_seed);
+            vibrato(chan, random_seed);
         }
         5 => {
             tone_portamento(chan);
@@ -478,13 +485,13 @@ fn channel_tick(chan: &mut Channel, state: &mut State) {
         6 => {
             let fresh5 = &mut chan.vibrato_phase;
             *fresh5 = (*fresh5 as i32 + chan.vibrato_speed as i32) as u8;
-            vibrato(chan, &mut state.random_seed);
+            vibrato(chan, random_seed);
             volume_slide(chan, param);
         }
         7 => {
             let fresh6 = &mut chan.tremolo_phase;
             *fresh6 = (*fresh6 as i32 + chan.tremolo_speed as i32) as u8;
-            tremolo(chan, &mut state.random_seed);
+            tremolo(chan, random_seed);
         }
         10 => {
             volume_slide(chan, param);
@@ -516,18 +523,13 @@ fn channel_tick(chan: &mut Channel, state: &mut State) {
         }
         29 => {
             if param == chan.fx_count as i64 {
-                trigger(chan, &mut state.instruments);
+                trigger(chan, instruments);
             }
         }
         _ => {}
     }
     if effect > 0 {
-        update_frequency(
-            chan,
-            &mut state.sample_rate,
-            &mut state.gain,
-            &mut state.c2_rate,
-        );
+        update_frequency(chan, sample_rate, gain, c2_rate);
     }
 }
 unsafe fn sequence_row(state: &mut State) -> i64 {
@@ -610,8 +612,12 @@ unsafe fn sequence_tick(state: &mut State) -> i64 {
         chan_idx = 0;
         while chan_idx < state.num_channels {
             channel_tick(
-                &mut *state.channels.as_mut_ptr().offset(chan_idx as isize),
-                state,
+                &mut state.channels[chan_idx as usize],
+                &mut state.sample_rate,
+                &mut state.gain,
+                &mut state.c2_rate,
+                &mut state.random_seed,
+                &mut state.instruments,
             );
             chan_idx += 1;
         }
