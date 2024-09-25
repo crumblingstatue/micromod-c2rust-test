@@ -56,15 +56,14 @@ impl Default for Instrument {
         }
     }
 }
-static mut MICROMOD_VERSION: *const i8 =
-    b"Micromod Protracker replay 20180625 (c)mumart@gmail.com\0" as *const u8 as *const i8;
-static mut FINE_TUNING: [u16; 16] = [
+static MICROMOD_VERSION: &str = "Micromod Protracker replay 20180625 (c)mumart@gmail.com";
+static FINE_TUNING: [u16; 16] = [
     4340, 4308, 4277, 4247, 4216, 4186, 4156, 4126, 4096, 4067, 4037, 4008, 3979, 3951, 3922, 3894,
 ];
-static mut ARP_TUNING: [u16; 16] = [
+static ARP_TUNING: [u16; 16] = [
     4096, 3866, 3649, 3444, 3251, 3069, 2896, 2734, 2580, 2435, 2299, 2170, 2048, 1933, 1825, 1722,
 ];
-static mut SINE_TABLE: [u8; 32] = [
+static SINE_TABLE: [u8; 32] = [
     0, 24, 49, 74, 97, 120, 141, 161, 180, 197, 212, 224, 235, 244, 250, 253, 255, 253, 250, 244,
     235, 224, 212, 197, 180, 161, 141, 120, 97, 74, 49, 24,
 ];
@@ -182,10 +181,10 @@ unsafe fn unsigned_short_big_endian(buf: *const i8, offset: i64) -> i64 {
     ((*buf.offset(offset as isize) as i32 & 0xff_i32) << 8
         | *buf.offset((offset + 1) as isize) as i32 & 0xff_i32) as i64
 }
-unsafe fn set_tempo(tempo: i64, state: &mut State) {
+fn set_tempo(tempo: i64, state: &mut State) {
     state.tick_len = ((state.sample_rate << 1) + (state.sample_rate >> 1)) / tempo;
 }
-unsafe fn update_frequency(chan: &mut Channel, state: &mut State) {
+fn update_frequency(chan: &mut Channel, state: &mut State) {
     let mut period;
     let mut volume;
 
@@ -670,7 +669,7 @@ unsafe fn resample(chan: &mut Channel, buf: *mut i16, offset: i64, count: i64, s
     chan.sample_idx = sidx;
 }
 
-pub unsafe fn micromod_get_version() -> *const i8 {
+pub fn micromod_get_version() -> &'static str {
     MICROMOD_VERSION
 }
 
