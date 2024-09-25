@@ -738,74 +738,83 @@ pub unsafe fn micromod_calculate_mod_file_len(module_header: *const i8) -> i64 {
     length
 }
 
-pub unsafe fn micromod_initialise(data: &[u8], sampling_rate: i64, state: &mut State) -> i64 {
-    let mut inst;
-    let mut sample_data_offset;
-    let mut inst_idx;
-    let mut sample_length;
-    let mut volume;
-    let mut fine_tune;
-    let mut loop_start;
-    let mut loop_length;
-    state.num_channels = calculate_num_channels(data.as_ptr().cast());
-    if state.num_channels <= 0 {
-        state.num_channels = 0;
-        return -1_i32 as i64;
-    }
-    if sampling_rate < 8000 {
-        return -2_i32 as i64;
-    }
-    state.module_data = data.as_ptr().cast();
-    state.sample_rate = sampling_rate;
-    state.song_length = (*state.module_data.offset(950) as i32 & 0x7f_i32) as i64;
-    state.restart = (*state.module_data.offset(951) as i32 & 0x7f_i32) as i64;
-    if state.restart >= state.song_length {
-        state.restart = 0;
-    }
-    state.sequence = Some(std::slice::from_raw_parts(
-        (state.module_data as *const u8).offset(952),
-        data.len() - 952,
-    ));
-    state.pattern_data = Some(std::slice::from_raw_parts(
-        (state.module_data as *const u8).offset(1084),
-        data.len() - 1084,
-    ));
-    state.num_patterns = calculate_num_patterns(state.module_data);
-    sample_data_offset = 1084 + state.num_patterns * 64 * state.num_channels * 4;
-    inst_idx = 1;
-    while inst_idx < 32 {
-        inst = &mut state.instruments[inst_idx as usize];
-        sample_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 12) * 2;
-        fine_tune =
-            (*state.module_data.offset((inst_idx * 30 + 14) as isize) as i32 & 0xf_i32) as i64;
-        inst.fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
-        volume =
-            (*state.module_data.offset((inst_idx * 30 + 15) as isize) as i32 & 0x7f_i32) as i64;
-        inst.volume = (if volume > 64 { 64 } else { volume }) as u8;
-        loop_start = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 16) * 2;
-        loop_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 18) * 2;
-        if loop_start + loop_length > sample_length {
-            if loop_start / 2 + loop_length <= sample_length {
-                loop_start /= 2;
-            } else {
-                loop_length = sample_length - loop_start;
+#[derive(Debug)]
+pub enum InitError {
+    ChannelNumIncorrect,
+    SamplingRateIncorrect,
+}
+
+impl State<'_> {
+    pub unsafe fn init(data: &[u8], sampling_rate: i64) -> Result<State, InitError> {
+        let mut inst;
+        let mut sample_data_offset;
+        let mut inst_idx;
+        let mut sample_length;
+        let mut volume;
+        let mut fine_tune;
+        let mut loop_start;
+        let mut loop_length;
+        let mut state = State::default();
+        state.num_channels = calculate_num_channels(data.as_ptr().cast());
+        if state.num_channels <= 0 {
+            state.num_channels = 0;
+            return Err(InitError::ChannelNumIncorrect);
+        }
+        if sampling_rate < 8000 {
+            return Err(InitError::SamplingRateIncorrect);
+        }
+        state.module_data = data.as_ptr().cast();
+        state.sample_rate = sampling_rate;
+        state.song_length = (*state.module_data.offset(950) as i32 & 0x7f_i32) as i64;
+        state.restart = (*state.module_data.offset(951) as i32 & 0x7f_i32) as i64;
+        if state.restart >= state.song_length {
+            state.restart = 0;
+        }
+        state.sequence = Some(std::slice::from_raw_parts(
+            (state.module_data as *const u8).offset(952),
+            data.len() - 952,
+        ));
+        state.pattern_data = Some(std::slice::from_raw_parts(
+            (state.module_data as *const u8).offset(1084),
+            data.len() - 1084,
+        ));
+        state.num_patterns = calculate_num_patterns(state.module_data);
+        sample_data_offset = 1084 + state.num_patterns * 64 * state.num_channels * 4;
+        inst_idx = 1;
+        while inst_idx < 32 {
+            inst = &mut state.instruments[inst_idx as usize];
+            sample_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 12) * 2;
+            fine_tune =
+                (*state.module_data.offset((inst_idx * 30 + 14) as isize) as i32 & 0xf_i32) as i64;
+            inst.fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
+            volume =
+                (*state.module_data.offset((inst_idx * 30 + 15) as isize) as i32 & 0x7f_i32) as i64;
+            inst.volume = (if volume > 64 { 64 } else { volume }) as u8;
+            loop_start = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 16) * 2;
+            loop_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 18) * 2;
+            if loop_start + loop_length > sample_length {
+                if loop_start / 2 + loop_length <= sample_length {
+                    loop_start /= 2;
+                } else {
+                    loop_length = sample_length - loop_start;
+                }
             }
+            if loop_length < 4 {
+                loop_start = sample_length;
+                loop_length = 0;
+            }
+            inst.loop_start = (loop_start << 14) as u64;
+            inst.loop_length = (loop_length << 14) as u64;
+            inst.sample_data = state.module_data.offset(sample_data_offset as isize);
+            sample_data_offset += sample_length;
+            inst_idx += 1;
         }
-        if loop_length < 4 {
-            loop_start = sample_length;
-            loop_length = 0;
-        }
-        inst.loop_start = (loop_start << 14) as u64;
-        inst.loop_length = (loop_length << 14) as u64;
-        inst.sample_data = state.module_data.offset(sample_data_offset as isize);
-        sample_data_offset += sample_length;
-        inst_idx += 1;
+        state.c2_rate = (if state.num_channels > 4 { 8363 } else { 8287 }) as i64;
+        state.gain = (if state.num_channels > 4 { 32 } else { 64 }) as i64;
+        micromod_mute_channel(-1_i32 as i64, &mut state);
+        micromod_set_position(0, &mut state);
+        Ok(state)
     }
-    state.c2_rate = (if state.num_channels > 4 { 8363 } else { 8287 }) as i64;
-    state.gain = (if state.num_channels > 4 { 32 } else { 64 }) as i64;
-    micromod_mute_channel(-1_i32 as i64, state);
-    micromod_set_position(0, state);
-    0
 }
 
 pub unsafe fn micromod_get_string(instrument: i64, string: *mut i8, state: &mut State) {
@@ -949,9 +958,8 @@ fn main() {
     let mod_data = std::fs::read(std::env::args_os().nth(1).unwrap()).unwrap();
     let output_file = std::fs::File::create("output.pcm").unwrap();
     let mut writer = BufWriter::new(output_file);
-    let mut state = State::default();
     unsafe {
-        dbg!(micromod_initialise(&mod_data, 48_000, &mut state));
+        let mut state = State::init(&mod_data, 48_000).unwrap();
         for _ in 0..1000 {
             let mut out = [0; 4096];
             micromod_get_audio(&mut out, 2048, &mut state);
