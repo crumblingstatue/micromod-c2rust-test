@@ -2,50 +2,50 @@
 #[repr(C)]
 pub struct Channel {
     pub note: Note,
-    pub period: libc::c_ushort,
-    pub porta_period: libc::c_ushort,
-    pub sample_offset: libc::c_ulong,
-    pub sample_idx: libc::c_ulong,
-    pub step: libc::c_ulong,
-    pub volume: libc::c_uchar,
-    pub panning: libc::c_uchar,
-    pub fine_tune: libc::c_uchar,
-    pub ampl: libc::c_uchar,
-    pub mute: libc::c_uchar,
-    pub id: libc::c_uchar,
-    pub instrument: libc::c_uchar,
-    pub assigned: libc::c_uchar,
-    pub porta_speed: libc::c_uchar,
-    pub pl_row: libc::c_uchar,
-    pub fx_count: libc::c_uchar,
-    pub vibrato_type: libc::c_uchar,
-    pub vibrato_phase: libc::c_uchar,
-    pub vibrato_speed: libc::c_uchar,
-    pub vibrato_depth: libc::c_uchar,
-    pub tremolo_type: libc::c_uchar,
-    pub tremolo_phase: libc::c_uchar,
-    pub tremolo_speed: libc::c_uchar,
-    pub tremolo_depth: libc::c_uchar,
-    pub tremolo_add: libc::c_schar,
-    pub vibrato_add: libc::c_schar,
-    pub arpeggio_add: libc::c_schar,
+    pub period: u16,
+    pub porta_period: u16,
+    pub sample_offset: u64,
+    pub sample_idx: u64,
+    pub step: u64,
+    pub volume: u8,
+    pub panning: u8,
+    pub fine_tune: u8,
+    pub ampl: u8,
+    pub mute: u8,
+    pub id: u8,
+    pub instrument: u8,
+    pub assigned: u8,
+    pub porta_speed: u8,
+    pub pl_row: u8,
+    pub fx_count: u8,
+    pub vibrato_type: u8,
+    pub vibrato_phase: u8,
+    pub vibrato_speed: u8,
+    pub vibrato_depth: u8,
+    pub tremolo_type: u8,
+    pub tremolo_phase: u8,
+    pub tremolo_speed: u8,
+    pub tremolo_depth: u8,
+    pub tremolo_add: i8,
+    pub vibrato_add: i8,
+    pub arpeggio_add: i8,
 }
 #[derive(Copy, Clone, Default)]
 #[repr(C)]
 pub struct Note {
-    pub key: libc::c_ushort,
-    pub instrument: libc::c_uchar,
-    pub effect: libc::c_uchar,
-    pub param: libc::c_uchar,
+    pub key: u16,
+    pub instrument: u8,
+    pub effect: u8,
+    pub param: u8,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct Instrument {
-    pub volume: libc::c_uchar,
-    pub fine_tune: libc::c_uchar,
-    pub loop_start: libc::c_ulong,
-    pub loop_length: libc::c_ulong,
-    pub sample_data: *mut libc::c_schar,
+    pub volume: u8,
+    pub fine_tune: u8,
+    pub loop_start: u64,
+    pub loop_length: u64,
+    pub sample_data: *mut i8,
 }
 
 impl Default for Instrument {
@@ -59,78 +59,77 @@ impl Default for Instrument {
         }
     }
 }
-static mut MICROMOD_VERSION: *const libc::c_char =
-    b"Micromod Protracker replay 20180625 (c)mumart@gmail.com\0" as *const u8
-        as *const libc::c_char;
-static mut FINE_TUNING: [libc::c_ushort; 16] = [
-    4340 as libc::c_int as libc::c_ushort,
-    4308 as libc::c_int as libc::c_ushort,
-    4277 as libc::c_int as libc::c_ushort,
-    4247 as libc::c_int as libc::c_ushort,
-    4216 as libc::c_int as libc::c_ushort,
-    4186 as libc::c_int as libc::c_ushort,
-    4156 as libc::c_int as libc::c_ushort,
-    4126 as libc::c_int as libc::c_ushort,
-    4096 as libc::c_int as libc::c_ushort,
-    4067 as libc::c_int as libc::c_ushort,
-    4037 as libc::c_int as libc::c_ushort,
-    4008 as libc::c_int as libc::c_ushort,
-    3979 as libc::c_int as libc::c_ushort,
-    3951 as libc::c_int as libc::c_ushort,
-    3922 as libc::c_int as libc::c_ushort,
-    3894 as libc::c_int as libc::c_ushort,
+static mut MICROMOD_VERSION: *const i8 =
+    b"Micromod Protracker replay 20180625 (c)mumart@gmail.com\0" as *const u8 as *const i8;
+static mut FINE_TUNING: [u16; 16] = [
+    4340 as i32 as u16,
+    4308 as i32 as u16,
+    4277 as i32 as u16,
+    4247 as i32 as u16,
+    4216 as i32 as u16,
+    4186 as i32 as u16,
+    4156 as i32 as u16,
+    4126 as i32 as u16,
+    4096 as i32 as u16,
+    4067 as i32 as u16,
+    4037 as i32 as u16,
+    4008 as i32 as u16,
+    3979 as i32 as u16,
+    3951 as i32 as u16,
+    3922 as i32 as u16,
+    3894 as i32 as u16,
 ];
-static mut ARP_TUNING: [libc::c_ushort; 16] = [
-    4096 as libc::c_int as libc::c_ushort,
-    3866 as libc::c_int as libc::c_ushort,
-    3649 as libc::c_int as libc::c_ushort,
-    3444 as libc::c_int as libc::c_ushort,
-    3251 as libc::c_int as libc::c_ushort,
-    3069 as libc::c_int as libc::c_ushort,
-    2896 as libc::c_int as libc::c_ushort,
-    2734 as libc::c_int as libc::c_ushort,
-    2580 as libc::c_int as libc::c_ushort,
-    2435 as libc::c_int as libc::c_ushort,
-    2299 as libc::c_int as libc::c_ushort,
-    2170 as libc::c_int as libc::c_ushort,
-    2048 as libc::c_int as libc::c_ushort,
-    1933 as libc::c_int as libc::c_ushort,
-    1825 as libc::c_int as libc::c_ushort,
-    1722 as libc::c_int as libc::c_ushort,
+static mut ARP_TUNING: [u16; 16] = [
+    4096 as i32 as u16,
+    3866 as i32 as u16,
+    3649 as i32 as u16,
+    3444 as i32 as u16,
+    3251 as i32 as u16,
+    3069 as i32 as u16,
+    2896 as i32 as u16,
+    2734 as i32 as u16,
+    2580 as i32 as u16,
+    2435 as i32 as u16,
+    2299 as i32 as u16,
+    2170 as i32 as u16,
+    2048 as i32 as u16,
+    1933 as i32 as u16,
+    1825 as i32 as u16,
+    1722 as i32 as u16,
 ];
-static mut SINE_TABLE: [libc::c_uchar; 32] = [
-    0 as libc::c_int as libc::c_uchar,
-    24 as libc::c_int as libc::c_uchar,
-    49 as libc::c_int as libc::c_uchar,
-    74 as libc::c_int as libc::c_uchar,
-    97 as libc::c_int as libc::c_uchar,
-    120 as libc::c_int as libc::c_uchar,
-    141 as libc::c_int as libc::c_uchar,
-    161 as libc::c_int as libc::c_uchar,
-    180 as libc::c_int as libc::c_uchar,
-    197 as libc::c_int as libc::c_uchar,
-    212 as libc::c_int as libc::c_uchar,
-    224 as libc::c_int as libc::c_uchar,
-    235 as libc::c_int as libc::c_uchar,
-    244 as libc::c_int as libc::c_uchar,
-    250 as libc::c_int as libc::c_uchar,
-    253 as libc::c_int as libc::c_uchar,
-    255 as libc::c_int as libc::c_uchar,
-    253 as libc::c_int as libc::c_uchar,
-    250 as libc::c_int as libc::c_uchar,
-    244 as libc::c_int as libc::c_uchar,
-    235 as libc::c_int as libc::c_uchar,
-    224 as libc::c_int as libc::c_uchar,
-    212 as libc::c_int as libc::c_uchar,
-    197 as libc::c_int as libc::c_uchar,
-    180 as libc::c_int as libc::c_uchar,
-    161 as libc::c_int as libc::c_uchar,
-    141 as libc::c_int as libc::c_uchar,
-    120 as libc::c_int as libc::c_uchar,
-    97 as libc::c_int as libc::c_uchar,
-    74 as libc::c_int as libc::c_uchar,
-    49 as libc::c_int as libc::c_uchar,
-    24 as libc::c_int as libc::c_uchar,
+static mut SINE_TABLE: [u8; 32] = [
+    0 as i32 as u8,
+    24 as i32 as u8,
+    49 as i32 as u8,
+    74 as i32 as u8,
+    97 as i32 as u8,
+    120 as i32 as u8,
+    141 as i32 as u8,
+    161 as i32 as u8,
+    180 as i32 as u8,
+    197 as i32 as u8,
+    212 as i32 as u8,
+    224 as i32 as u8,
+    235 as i32 as u8,
+    244 as i32 as u8,
+    250 as i32 as u8,
+    253 as i32 as u8,
+    255 as i32 as u8,
+    253 as i32 as u8,
+    250 as i32 as u8,
+    244 as i32 as u8,
+    235 as i32 as u8,
+    224 as i32 as u8,
+    212 as i32 as u8,
+    197 as i32 as u8,
+    180 as i32 as u8,
+    161 as i32 as u8,
+    141 as i32 as u8,
+    120 as i32 as u8,
+    97 as i32 as u8,
+    74 as i32 as u8,
+    49 as i32 as u8,
+    24 as i32 as u8,
 ];
 
 pub struct State {
@@ -150,9 +149,9 @@ pub struct State {
     random_seed: i64,
     channels: [Channel; 16],
     instruments: [Instrument; 32],
-    module_data: *mut libc::c_schar,
-    pattern_data: *mut libc::c_uchar,
-    sequence: *mut libc::c_uchar,
+    module_data: *mut i8,
+    pattern_data: *mut u8,
+    sequence: *mut u8,
     song_length: i64,
     restart: i64,
     num_patterns: i64,
@@ -189,29 +188,27 @@ impl Default for State {
     }
 }
 
-unsafe fn calculate_num_patterns(module_header: *mut libc::c_schar) -> libc::c_long {
+unsafe fn calculate_num_patterns(module_header: *mut i8) -> i64 {
     let mut num_patterns_0;
     let mut order_entry;
     let mut pattern_0;
-    num_patterns_0 = 0 as libc::c_int as libc::c_long;
-    pattern_0 = 0 as libc::c_int as libc::c_long;
-    while pattern_0 < 128 as libc::c_int as libc::c_long {
-        order_entry = (*module_header
-            .offset((952 as libc::c_int as libc::c_long + pattern_0) as isize)
-            as libc::c_int
-            & 0x7f as libc::c_int) as libc::c_long;
+    num_patterns_0 = 0 as i32 as i64;
+    pattern_0 = 0 as i32 as i64;
+    while pattern_0 < 128 as i32 as i64 {
+        order_entry = (*module_header.offset((952 as i32 as i64 + pattern_0) as isize) as i32
+            & 0x7f as i32) as i64;
         if order_entry >= num_patterns_0 {
-            num_patterns_0 = order_entry + 1 as libc::c_int as libc::c_long;
+            num_patterns_0 = order_entry + 1 as i32 as i64;
         }
         pattern_0 += 1;
     }
     return num_patterns_0;
 }
-unsafe fn calculate_num_channels(module_header: *mut libc::c_schar) -> libc::c_long {
-    let mut numchan: libc::c_long = 0;
+unsafe fn calculate_num_channels(module_header: *mut i8) -> i64 {
+    let mut numchan: i64 = 0;
     let mut current_block_3: u64;
-    match (*module_header.offset(1082 as libc::c_int as isize) as libc::c_int) << 8 as libc::c_int
-        | *module_header.offset(1083 as libc::c_int as isize) as libc::c_int
+    match (*module_header.offset(1082 as i32 as isize) as i32) << 8 as i32
+        | *module_header.offset(1083 as i32 as isize) as i32
     {
         19233 => {
             current_block_3 = 4379976358253192308;
@@ -223,20 +220,17 @@ unsafe fn calculate_num_channels(module_header: *mut libc::c_schar) -> libc::c_l
             current_block_3 = 5412093109544641453;
         }
         18510 => {
-            numchan = (*module_header.offset(1080 as libc::c_int as isize) as libc::c_int
-                - 48 as libc::c_int) as libc::c_long;
+            numchan = (*module_header.offset(1080 as i32 as isize) as i32 - 48 as i32) as i64;
             current_block_3 = 3276175668257526147;
         }
         17224 => {
-            numchan = ((*module_header.offset(1080 as libc::c_int as isize) as libc::c_int
-                - 48 as libc::c_int)
-                * 10 as libc::c_int
-                + (*module_header.offset(1081 as libc::c_int as isize) as libc::c_int
-                    - 48 as libc::c_int)) as libc::c_long;
+            numchan = ((*module_header.offset(1080 as i32 as isize) as i32 - 48 as i32) * 10 as i32
+                + (*module_header.offset(1081 as i32 as isize) as i32 - 48 as i32))
+                as i64;
             current_block_3 = 3276175668257526147;
         }
         _ => {
-            numchan = 0 as libc::c_int as libc::c_long;
+            numchan = 0 as i32 as i64;
             current_block_3 = 3276175668257526147;
         }
     }
@@ -248,102 +242,92 @@ unsafe fn calculate_num_channels(module_header: *mut libc::c_schar) -> libc::c_l
     }
     match current_block_3 {
         5412093109544641453 => {
-            numchan = 4 as libc::c_int as libc::c_long;
+            numchan = 4 as i32 as i64;
         }
         _ => {}
     }
-    if numchan > 16 as libc::c_int as libc::c_long {
-        numchan = 0 as libc::c_int as libc::c_long;
+    if numchan > 16 as i32 as i64 {
+        numchan = 0 as i32 as i64;
     }
     return numchan;
 }
-unsafe fn unsigned_short_big_endian(buf: *mut libc::c_schar, offset: libc::c_long) -> libc::c_long {
-    return ((*buf.offset(offset as isize) as libc::c_int & 0xff as libc::c_int) << 8 as libc::c_int
-        | *buf.offset((offset + 1 as libc::c_int as libc::c_long) as isize) as libc::c_int
-            & 0xff as libc::c_int) as libc::c_long;
+unsafe fn unsigned_short_big_endian(buf: *mut i8, offset: i64) -> i64 {
+    return ((*buf.offset(offset as isize) as i32 & 0xff as i32) << 8 as i32
+        | *buf.offset((offset + 1 as i32 as i64) as isize) as i32 & 0xff as i32) as i64;
 }
-unsafe fn set_tempo(tempo: libc::c_long, state: &mut State) {
-    state.tick_len =
-        ((state.sample_rate << 1 as libc::c_int) + (state.sample_rate >> 1 as libc::c_int)) / tempo;
+unsafe fn set_tempo(tempo: i64, state: &mut State) {
+    state.tick_len = ((state.sample_rate << 1 as i32) + (state.sample_rate >> 1 as i32)) / tempo;
 }
 unsafe fn update_frequency(chan: *mut Channel, state: &mut State) {
     let mut period;
     let mut volume;
     let freq;
-    period = ((*chan).period as libc::c_int + (*chan).vibrato_add as libc::c_int) as libc::c_long;
-    period =
-        period * ARP_TUNING[(*chan).arpeggio_add as usize] as libc::c_long >> 11 as libc::c_int;
-    period = (period >> 1 as libc::c_int) + (period & 1 as libc::c_int as libc::c_long);
-    if period < 14 as libc::c_int as libc::c_long {
-        period = 6848 as libc::c_int as libc::c_long;
+    period = ((*chan).period as i32 + (*chan).vibrato_add as i32) as i64;
+    period = period * ARP_TUNING[(*chan).arpeggio_add as usize] as i64 >> 11 as i32;
+    period = (period >> 1 as i32) + (period & 1 as i32 as i64);
+    if period < 14 as i32 as i64 {
+        period = 6848 as i32 as i64;
     }
-    freq = (state.c2_rate * 428 as libc::c_int as libc::c_long / period) as libc::c_ulong;
-    (*chan).step = (freq << 14 as libc::c_int).wrapping_div(state.sample_rate as libc::c_ulong);
-    volume = ((*chan).volume as libc::c_int + (*chan).tremolo_add as libc::c_int) as libc::c_long;
-    if volume > 64 as libc::c_int as libc::c_long {
-        volume = 64 as libc::c_int as libc::c_long;
+    freq = (state.c2_rate * 428 as i32 as i64 / period) as u64;
+    (*chan).step = (freq << 14 as i32).wrapping_div(state.sample_rate as u64);
+    volume = ((*chan).volume as i32 + (*chan).tremolo_add as i32) as i64;
+    if volume > 64 as i32 as i64 {
+        volume = 64 as i32 as i64;
     }
-    if volume < 0 as libc::c_int as libc::c_long {
-        volume = 0 as libc::c_int as libc::c_long;
+    if volume < 0 as i32 as i64 {
+        volume = 0 as i32 as i64;
     }
-    (*chan).ampl = (volume * state.gain >> 5 as libc::c_int) as libc::c_uchar;
+    (*chan).ampl = (volume * state.gain >> 5 as i32) as u8;
 }
 unsafe fn tone_portamento(chan: *mut Channel) {
     let mut source;
     let dest;
-    source = (*chan).period as libc::c_long;
-    dest = (*chan).porta_period as libc::c_long;
+    source = (*chan).period as i64;
+    dest = (*chan).porta_period as i64;
     if source < dest {
-        source += (*chan).porta_speed as libc::c_long;
+        source += (*chan).porta_speed as i64;
         if source > dest {
             source = dest;
         }
     } else if source > dest {
-        source -= (*chan).porta_speed as libc::c_long;
+        source -= (*chan).porta_speed as i64;
         if source < dest {
             source = dest;
         }
     }
-    (*chan).period = source as libc::c_ushort;
+    (*chan).period = source as u16;
 }
-unsafe fn volume_slide(chan: *mut Channel, param: libc::c_long) {
+unsafe fn volume_slide(chan: *mut Channel, param: i64) {
     let mut volume;
-    volume = (*chan).volume as libc::c_long + (param >> 4 as libc::c_int)
-        - (param & 0xf as libc::c_int as libc::c_long);
-    if volume < 0 as libc::c_int as libc::c_long {
-        volume = 0 as libc::c_int as libc::c_long;
+    volume = (*chan).volume as i64 + (param >> 4 as i32) - (param & 0xf as i32 as i64);
+    if volume < 0 as i32 as i64 {
+        volume = 0 as i32 as i64;
     }
-    if volume > 64 as libc::c_int as libc::c_long {
-        volume = 64 as libc::c_int as libc::c_long;
+    if volume > 64 as i32 as i64 {
+        volume = 64 as i32 as i64;
     }
-    (*chan).volume = volume as libc::c_uchar;
+    (*chan).volume = volume as u8;
 }
-unsafe fn waveform(phase: libc::c_long, type_0: libc::c_long, state: &mut State) -> libc::c_long {
-    let mut amplitude: libc::c_long = 0 as libc::c_int as libc::c_long;
-    match type_0 & 0x3 as libc::c_int as libc::c_long {
+unsafe fn waveform(phase: i64, type_0: i64, state: &mut State) -> i64 {
+    let mut amplitude: i64 = 0 as i32 as i64;
+    match type_0 & 0x3 as i32 as i64 {
         0 => {
-            amplitude =
-                SINE_TABLE[(phase & 0x1f as libc::c_int as libc::c_long) as usize] as libc::c_long;
-            if phase & 0x20 as libc::c_int as libc::c_long > 0 as libc::c_int as libc::c_long {
+            amplitude = SINE_TABLE[(phase & 0x1f as i32 as i64) as usize] as i64;
+            if phase & 0x20 as i32 as i64 > 0 as i32 as i64 {
                 amplitude = -amplitude;
             }
         }
         1 => {
-            amplitude = 255 as libc::c_int as libc::c_long
-                - ((phase + 0x20 as libc::c_int as libc::c_long
-                    & 0x3f as libc::c_int as libc::c_long)
-                    << 3 as libc::c_int);
+            amplitude =
+                255 as i32 as i64 - ((phase + 0x20 as i32 as i64 & 0x3f as i32 as i64) << 3 as i32);
         }
         2 => {
-            amplitude = 255 as libc::c_int as libc::c_long
-                - ((phase & 0x20 as libc::c_int as libc::c_long) << 4 as libc::c_int);
+            amplitude = 255 as i32 as i64 - ((phase & 0x20 as i32 as i64) << 4 as i32);
         }
         3 => {
-            amplitude =
-                (state.random_seed >> 20 as libc::c_int) - 255 as libc::c_int as libc::c_long;
-            state.random_seed = state.random_seed * 65 as libc::c_int as libc::c_long
-                + 17 as libc::c_int as libc::c_long
-                & 0x1fffffff as libc::c_int as libc::c_long;
+            amplitude = (state.random_seed >> 20 as i32) - 255 as i32 as i64;
+            state.random_seed =
+                state.random_seed * 65 as i32 as i64 + 17 as i32 as i64 & 0x1fffffff as i32 as i64;
         }
         _ => {}
     }
@@ -351,60 +335,57 @@ unsafe fn waveform(phase: libc::c_long, type_0: libc::c_long, state: &mut State)
 }
 unsafe fn vibrato(chan: *mut Channel, state: &mut State) {
     (*chan).vibrato_add = (waveform(
-        (*chan).vibrato_phase as libc::c_long,
-        (*chan).vibrato_type as libc::c_long,
+        (*chan).vibrato_phase as i64,
+        (*chan).vibrato_type as i64,
         state,
-    ) * (*chan).vibrato_depth as libc::c_long
-        >> 7 as libc::c_int) as libc::c_schar;
+    ) * (*chan).vibrato_depth as i64
+        >> 7 as i32) as i8;
 }
 unsafe fn tremolo(chan: *mut Channel, state: &mut State) {
     (*chan).tremolo_add = (waveform(
-        (*chan).tremolo_phase as libc::c_long,
-        (*chan).tremolo_type as libc::c_long,
+        (*chan).tremolo_phase as i64,
+        (*chan).tremolo_type as i64,
         state,
-    ) * (*chan).tremolo_depth as libc::c_long
-        >> 6 as libc::c_int) as libc::c_schar;
+    ) * (*chan).tremolo_depth as i64
+        >> 6 as i32) as i8;
 }
 unsafe fn trigger(channel: *mut Channel, state: &mut State) {
     let period;
     let ins;
-    ins = (*channel).note.instrument as libc::c_long;
-    if ins > 0 as libc::c_int as libc::c_long && ins < 32 as libc::c_int as libc::c_long {
-        (*channel).assigned = ins as libc::c_uchar;
-        (*channel).sample_offset = 0 as libc::c_int as libc::c_ulong;
+    ins = (*channel).note.instrument as i64;
+    if ins > 0 as i32 as i64 && ins < 32 as i32 as i64 {
+        (*channel).assigned = ins as u8;
+        (*channel).sample_offset = 0 as i32 as u64;
         (*channel).fine_tune = state.instruments[ins as usize].fine_tune;
         (*channel).volume = state.instruments[ins as usize].volume;
-        if state.instruments[ins as usize].loop_length > 0 as libc::c_int as libc::c_ulong
-            && (*channel).instrument as libc::c_int > 0 as libc::c_int
+        if state.instruments[ins as usize].loop_length > 0 as i32 as u64
+            && (*channel).instrument as i32 > 0 as i32
         {
-            (*channel).instrument = ins as libc::c_uchar;
+            (*channel).instrument = ins as u8;
         }
     }
-    if (*channel).note.effect as libc::c_int == 0x9 as libc::c_int {
-        (*channel).sample_offset = (((*channel).note.param as libc::c_int & 0xff as libc::c_int)
-            << 8 as libc::c_int) as libc::c_ulong;
-    } else if (*channel).note.effect as libc::c_int == 0x15 as libc::c_int {
+    if (*channel).note.effect as i32 == 0x9 as i32 {
+        (*channel).sample_offset =
+            (((*channel).note.param as i32 & 0xff as i32) << 8 as i32) as u64;
+    } else if (*channel).note.effect as i32 == 0x15 as i32 {
         (*channel).fine_tune = (*channel).note.param;
     }
-    if (*channel).note.key as libc::c_int > 0 as libc::c_int {
-        period = ((*channel).note.key as libc::c_int
-            * FINE_TUNING[((*channel).fine_tune as libc::c_int & 0xf as libc::c_int) as usize]
-                as libc::c_int
-            >> 11 as libc::c_int) as libc::c_long;
-        (*channel).porta_period = ((period >> 1 as libc::c_int)
-            + (period & 1 as libc::c_int as libc::c_long))
-            as libc::c_ushort;
-        if (*channel).note.effect as libc::c_int != 0x3 as libc::c_int
-            && (*channel).note.effect as libc::c_int != 0x5 as libc::c_int
+    if (*channel).note.key as i32 > 0 as i32 {
+        period = ((*channel).note.key as i32
+            * FINE_TUNING[((*channel).fine_tune as i32 & 0xf as i32) as usize] as i32
+            >> 11 as i32) as i64;
+        (*channel).porta_period = ((period >> 1 as i32) + (period & 1 as i32 as i64)) as u16;
+        if (*channel).note.effect as i32 != 0x3 as i32
+            && (*channel).note.effect as i32 != 0x5 as i32
         {
             (*channel).instrument = (*channel).assigned;
             (*channel).period = (*channel).porta_period;
-            (*channel).sample_idx = (*channel).sample_offset << 14 as libc::c_int;
-            if ((*channel).vibrato_type as libc::c_int) < 4 as libc::c_int {
-                (*channel).vibrato_phase = 0 as libc::c_int as libc::c_uchar;
+            (*channel).sample_idx = (*channel).sample_offset << 14 as i32;
+            if ((*channel).vibrato_type as i32) < 4 as i32 {
+                (*channel).vibrato_phase = 0 as i32 as u8;
             }
-            if ((*channel).tremolo_type as libc::c_int) < 4 as libc::c_int {
-                (*channel).tremolo_phase = 0 as libc::c_int as libc::c_uchar;
+            if ((*channel).tremolo_type as i32) < 4 as i32 {
+                (*channel).tremolo_phase = 0 as i32 as u8;
             }
         }
     }
@@ -414,32 +395,30 @@ unsafe fn channel_row(chan: *mut Channel, state: &mut State) {
     let param;
     let volume;
     let period;
-    effect = (*chan).note.effect as libc::c_long;
-    param = (*chan).note.param as libc::c_long;
+    effect = (*chan).note.effect as i64;
+    param = (*chan).note.param as i64;
     let ref mut fresh0 = (*chan).fx_count;
-    *fresh0 = 0 as libc::c_int as libc::c_uchar;
+    *fresh0 = 0 as i32 as u8;
     let ref mut fresh1 = (*chan).arpeggio_add;
-    *fresh1 = *fresh0 as libc::c_schar;
+    *fresh1 = *fresh0 as i8;
     let ref mut fresh2 = (*chan).tremolo_add;
     *fresh2 = *fresh1;
     (*chan).vibrato_add = *fresh2;
-    if !(effect == 0x1d as libc::c_int as libc::c_long && param > 0 as libc::c_int as libc::c_long)
-    {
+    if !(effect == 0x1d as i32 as i64 && param > 0 as i32 as i64) {
         trigger(chan, state);
     }
     match effect {
         3 => {
-            if param > 0 as libc::c_int as libc::c_long {
-                (*chan).porta_speed = param as libc::c_uchar;
+            if param > 0 as i32 as i64 {
+                (*chan).porta_speed = param as u8;
             }
         }
         4 => {
-            if param & 0xf0 as libc::c_int as libc::c_long > 0 as libc::c_int as libc::c_long {
-                (*chan).vibrato_speed = (param >> 4 as libc::c_int) as libc::c_uchar;
+            if param & 0xf0 as i32 as i64 > 0 as i32 as i64 {
+                (*chan).vibrato_speed = (param >> 4 as i32) as u8;
             }
-            if param & 0xf as libc::c_int as libc::c_long > 0 as libc::c_int as libc::c_long {
-                (*chan).vibrato_depth =
-                    (param & 0xf as libc::c_int as libc::c_long) as libc::c_uchar;
+            if param & 0xf as i32 as i64 > 0 as i32 as i64 {
+                (*chan).vibrato_depth = (param & 0xf as i32 as i64) as u8;
             }
             vibrato(chan, state);
         }
@@ -447,52 +426,51 @@ unsafe fn channel_row(chan: *mut Channel, state: &mut State) {
             vibrato(chan, state);
         }
         7 => {
-            if param & 0xf0 as libc::c_int as libc::c_long > 0 as libc::c_int as libc::c_long {
-                (*chan).tremolo_speed = (param >> 4 as libc::c_int) as libc::c_uchar;
+            if param & 0xf0 as i32 as i64 > 0 as i32 as i64 {
+                (*chan).tremolo_speed = (param >> 4 as i32) as u8;
             }
-            if param & 0xf as libc::c_int as libc::c_long > 0 as libc::c_int as libc::c_long {
-                (*chan).tremolo_depth =
-                    (param & 0xf as libc::c_int as libc::c_long) as libc::c_uchar;
+            if param & 0xf as i32 as i64 > 0 as i32 as i64 {
+                (*chan).tremolo_depth = (param & 0xf as i32 as i64) as u8;
             }
             tremolo(chan, state);
         }
         8 => {
-            if state.num_channels != 4 as libc::c_int as libc::c_long {
-                (*chan).panning = (if param < 128 as libc::c_int as libc::c_long {
+            if state.num_channels != 4 as i32 as i64 {
+                (*chan).panning = (if param < 128 as i32 as i64 {
                     param
                 } else {
-                    127 as libc::c_int as libc::c_long
-                }) as libc::c_uchar;
+                    127 as i32 as i64
+                }) as u8;
             }
         }
         11 => {
-            if state.pl_count < 0 as libc::c_int as libc::c_long {
+            if state.pl_count < 0 as i32 as i64 {
                 state.break_pattern = param;
-                state.next_row = 0 as libc::c_int as libc::c_long;
+                state.next_row = 0 as i32 as i64;
             }
         }
         12 => {
-            (*chan).volume = (if param > 64 as libc::c_int as libc::c_long {
-                64 as libc::c_int as libc::c_long
+            (*chan).volume = (if param > 64 as i32 as i64 {
+                64 as i32 as i64
             } else {
                 param
-            }) as libc::c_uchar;
+            }) as u8;
         }
         13 => {
-            if state.pl_count < 0 as libc::c_int as libc::c_long {
-                if state.break_pattern < 0 as libc::c_int as libc::c_long {
-                    state.break_pattern = state.pattern + 1 as libc::c_int as libc::c_long;
+            if state.pl_count < 0 as i32 as i64 {
+                if state.break_pattern < 0 as i32 as i64 {
+                    state.break_pattern = state.pattern + 1 as i32 as i64;
                 }
-                state.next_row = (param >> 4 as libc::c_int) * 10 as libc::c_int as libc::c_long
-                    + (param & 0xf as libc::c_int as libc::c_long);
-                if state.next_row >= 64 as libc::c_int as libc::c_long {
-                    state.next_row = 0 as libc::c_int as libc::c_long;
+                state.next_row =
+                    (param >> 4 as i32) * 10 as i32 as i64 + (param & 0xf as i32 as i64);
+                if state.next_row >= 64 as i32 as i64 {
+                    state.next_row = 0 as i32 as i64;
                 }
             }
         }
         15 => {
-            if param > 0 as libc::c_int as libc::c_long {
-                if param < 32 as libc::c_int as libc::c_long {
+            if param > 0 as i32 as i64 {
+                if param < 32 as i32 as i64 {
                     state.speed = param;
                     state.tick = state.speed;
                 } else {
@@ -501,72 +479,69 @@ unsafe fn channel_row(chan: *mut Channel, state: &mut State) {
             }
         }
         17 => {
-            period = (*chan).period as libc::c_long - param;
-            (*chan).period = (if period < 0 as libc::c_int as libc::c_long {
-                0 as libc::c_int as libc::c_long
+            period = (*chan).period as i64 - param;
+            (*chan).period = (if period < 0 as i32 as i64 {
+                0 as i32 as i64
             } else {
                 period
-            }) as libc::c_ushort;
+            }) as u16;
         }
         18 => {
-            period = (*chan).period as libc::c_long + param;
-            (*chan).period = (if period > 65535 as libc::c_int as libc::c_long {
-                65535 as libc::c_int as libc::c_long
+            period = (*chan).period as i64 + param;
+            (*chan).period = (if period > 65535 as i32 as i64 {
+                65535 as i32 as i64
             } else {
                 period
-            }) as libc::c_ushort;
+            }) as u16;
         }
         20 => {
-            if param < 8 as libc::c_int as libc::c_long {
-                (*chan).vibrato_type = param as libc::c_uchar;
+            if param < 8 as i32 as i64 {
+                (*chan).vibrato_type = param as u8;
             }
         }
         22 => {
-            if param == 0 as libc::c_int as libc::c_long {
-                (*chan).pl_row = state.row as libc::c_uchar;
+            if param == 0 as i32 as i64 {
+                (*chan).pl_row = state.row as u8;
             }
-            if ((*chan).pl_row as libc::c_long) < state.row
-                && state.break_pattern < 0 as libc::c_int as libc::c_long
-            {
-                if state.pl_count < 0 as libc::c_int as libc::c_long {
+            if ((*chan).pl_row as i64) < state.row && state.break_pattern < 0 as i32 as i64 {
+                if state.pl_count < 0 as i32 as i64 {
                     state.pl_count = param;
-                    state.pl_channel = (*chan).id as libc::c_long;
+                    state.pl_channel = (*chan).id as i64;
                 }
-                if state.pl_channel == (*chan).id as libc::c_long {
-                    if state.pl_count == 0 as libc::c_int as libc::c_long {
-                        (*chan).pl_row =
-                            (state.row + 1 as libc::c_int as libc::c_long) as libc::c_uchar;
+                if state.pl_channel == (*chan).id as i64 {
+                    if state.pl_count == 0 as i32 as i64 {
+                        (*chan).pl_row = (state.row + 1 as i32 as i64) as u8;
                     } else {
-                        state.next_row = (*chan).pl_row as libc::c_long;
+                        state.next_row = (*chan).pl_row as i64;
                     }
                     state.pl_count -= 1;
                 }
             }
         }
         23 => {
-            if param < 8 as libc::c_int as libc::c_long {
-                (*chan).tremolo_type = param as libc::c_uchar;
+            if param < 8 as i32 as i64 {
+                (*chan).tremolo_type = param as u8;
             }
         }
         26 => {
-            volume = (*chan).volume as libc::c_long + param;
-            (*chan).volume = (if volume > 64 as libc::c_int as libc::c_long {
-                64 as libc::c_int as libc::c_long
+            volume = (*chan).volume as i64 + param;
+            (*chan).volume = (if volume > 64 as i32 as i64 {
+                64 as i32 as i64
             } else {
                 volume
-            }) as libc::c_uchar;
+            }) as u8;
         }
         27 => {
-            volume = (*chan).volume as libc::c_long - param;
-            (*chan).volume = (if volume < 0 as libc::c_int as libc::c_long {
-                0 as libc::c_int as libc::c_long
+            volume = (*chan).volume as i64 - param;
+            (*chan).volume = (if volume < 0 as i32 as i64 {
+                0 as i32 as i64
             } else {
                 volume
-            }) as libc::c_uchar;
+            }) as u8;
         }
         28 => {
-            if param <= 0 as libc::c_int as libc::c_long {
-                (*chan).volume = 0 as libc::c_int as libc::c_uchar;
+            if param <= 0 as i32 as i64 {
+                (*chan).volume = 0 as i32 as u8;
             }
         }
         30 => {
@@ -580,34 +555,33 @@ unsafe fn channel_tick(chan: *mut Channel, state: &mut State) {
     let effect;
     let param;
     let period;
-    effect = (*chan).note.effect as libc::c_long;
-    param = (*chan).note.param as libc::c_long;
+    effect = (*chan).note.effect as i64;
+    param = (*chan).note.param as i64;
     let ref mut fresh3 = (*chan).fx_count;
     *fresh3 = (*fresh3).wrapping_add(1);
     match effect {
         1 => {
-            period = (*chan).period as libc::c_long - param;
-            (*chan).period = (if period < 0 as libc::c_int as libc::c_long {
-                0 as libc::c_int as libc::c_long
+            period = (*chan).period as i64 - param;
+            (*chan).period = (if period < 0 as i32 as i64 {
+                0 as i32 as i64
             } else {
                 period
-            }) as libc::c_ushort;
+            }) as u16;
         }
         2 => {
-            period = (*chan).period as libc::c_long + param;
-            (*chan).period = (if period > 65535 as libc::c_int as libc::c_long {
-                65535 as libc::c_int as libc::c_long
+            period = (*chan).period as i64 + param;
+            (*chan).period = (if period > 65535 as i32 as i64 {
+                65535 as i32 as i64
             } else {
                 period
-            }) as libc::c_ushort;
+            }) as u16;
         }
         3 => {
             tone_portamento(chan);
         }
         4 => {
             let ref mut fresh4 = (*chan).vibrato_phase;
-            *fresh4 =
-                (*fresh4 as libc::c_int + (*chan).vibrato_speed as libc::c_int) as libc::c_uchar;
+            *fresh4 = (*fresh4 as i32 + (*chan).vibrato_speed as i32) as u8;
             vibrato(chan, state);
         }
         5 => {
@@ -616,135 +590,126 @@ unsafe fn channel_tick(chan: *mut Channel, state: &mut State) {
         }
         6 => {
             let ref mut fresh5 = (*chan).vibrato_phase;
-            *fresh5 =
-                (*fresh5 as libc::c_int + (*chan).vibrato_speed as libc::c_int) as libc::c_uchar;
+            *fresh5 = (*fresh5 as i32 + (*chan).vibrato_speed as i32) as u8;
             vibrato(chan, state);
             volume_slide(chan, param);
         }
         7 => {
             let ref mut fresh6 = (*chan).tremolo_phase;
-            *fresh6 =
-                (*fresh6 as libc::c_int + (*chan).tremolo_speed as libc::c_int) as libc::c_uchar;
+            *fresh6 = (*fresh6 as i32 + (*chan).tremolo_speed as i32) as u8;
             tremolo(chan, state);
         }
         10 => {
             volume_slide(chan, param);
         }
         14 => {
-            if (*chan).fx_count as libc::c_int > 2 as libc::c_int {
-                (*chan).fx_count = 0 as libc::c_int as libc::c_uchar;
+            if (*chan).fx_count as i32 > 2 as i32 {
+                (*chan).fx_count = 0 as i32 as u8;
             }
-            if (*chan).fx_count as libc::c_int == 0 as libc::c_int {
-                (*chan).arpeggio_add = 0 as libc::c_int as libc::c_schar;
+            if (*chan).fx_count as i32 == 0 as i32 {
+                (*chan).arpeggio_add = 0 as i32 as i8;
             }
-            if (*chan).fx_count as libc::c_int == 1 as libc::c_int {
-                (*chan).arpeggio_add = (param >> 4 as libc::c_int) as libc::c_schar;
+            if (*chan).fx_count as i32 == 1 as i32 {
+                (*chan).arpeggio_add = (param >> 4 as i32) as i8;
             }
-            if (*chan).fx_count as libc::c_int == 2 as libc::c_int {
-                (*chan).arpeggio_add =
-                    (param & 0xf as libc::c_int as libc::c_long) as libc::c_schar;
+            if (*chan).fx_count as i32 == 2 as i32 {
+                (*chan).arpeggio_add = (param & 0xf as i32 as i64) as i8;
             }
         }
         25 => {
-            if (*chan).fx_count as libc::c_long >= param {
-                (*chan).fx_count = 0 as libc::c_int as libc::c_uchar;
-                (*chan).sample_idx = 0 as libc::c_int as libc::c_ulong;
+            if (*chan).fx_count as i64 >= param {
+                (*chan).fx_count = 0 as i32 as u8;
+                (*chan).sample_idx = 0 as i32 as u64;
             }
         }
         28 => {
-            if param == (*chan).fx_count as libc::c_long {
-                (*chan).volume = 0 as libc::c_int as libc::c_uchar;
+            if param == (*chan).fx_count as i64 {
+                (*chan).volume = 0 as i32 as u8;
             }
         }
         29 => {
-            if param == (*chan).fx_count as libc::c_long {
+            if param == (*chan).fx_count as i64 {
                 trigger(chan, state);
             }
         }
         _ => {}
     }
-    if effect > 0 as libc::c_int as libc::c_long {
+    if effect > 0 as i32 as i64 {
         update_frequency(chan, state);
     }
 }
-unsafe fn sequence_row(state: &mut State) -> libc::c_long {
+unsafe fn sequence_row(state: &mut State) -> i64 {
     let mut song_end;
     let mut chan_idx;
     let mut pat_offset;
     let mut effect;
     let mut param;
     let mut note;
-    song_end = 0 as libc::c_int as libc::c_long;
-    if state.next_row < 0 as libc::c_int as libc::c_long {
-        state.break_pattern = state.pattern + 1 as libc::c_int as libc::c_long;
-        state.next_row = 0 as libc::c_int as libc::c_long;
+    song_end = 0 as i32 as i64;
+    if state.next_row < 0 as i32 as i64 {
+        state.break_pattern = state.pattern + 1 as i32 as i64;
+        state.next_row = 0 as i32 as i64;
     }
-    if state.break_pattern >= 0 as libc::c_int as libc::c_long {
+    if state.break_pattern >= 0 as i32 as i64 {
         if state.break_pattern >= state.song_length {
-            state.next_row = 0 as libc::c_int as libc::c_long;
+            state.next_row = 0 as i32 as i64;
             state.break_pattern = state.next_row;
         }
         if state.break_pattern <= state.pattern {
-            song_end = 1 as libc::c_int as libc::c_long;
+            song_end = 1 as i32 as i64;
         }
         state.pattern = state.break_pattern;
-        chan_idx = 0 as libc::c_int as libc::c_long;
+        chan_idx = 0 as i32 as i64;
         while chan_idx < state.num_channels {
-            state.channels[chan_idx as usize].pl_row = 0 as libc::c_int as libc::c_uchar;
+            state.channels[chan_idx as usize].pl_row = 0 as i32 as u8;
             chan_idx += 1;
         }
-        state.break_pattern = -(1 as libc::c_int) as libc::c_long;
+        state.break_pattern = -(1 as i32) as i64;
     }
     state.row = state.next_row;
-    state.next_row = state.row + 1 as libc::c_int as libc::c_long;
-    if state.next_row >= 64 as libc::c_int as libc::c_long {
-        state.next_row = -(1 as libc::c_int) as libc::c_long;
+    state.next_row = state.row + 1 as i32 as i64;
+    if state.next_row >= 64 as i32 as i64 {
+        state.next_row = -(1 as i32) as i64;
     }
-    pat_offset = ((*state.sequence.offset(state.pattern as isize) as libc::c_int
-        * 64 as libc::c_int) as libc::c_long
+    pat_offset = ((*state.sequence.offset(state.pattern as isize) as i32 * 64 as i32) as i64
         + state.row)
         * state.num_channels
-        * 4 as libc::c_int as libc::c_long;
-    chan_idx = 0 as libc::c_int as libc::c_long;
+        * 4 as i32 as i64;
+    chan_idx = 0 as i32 as i64;
     while chan_idx < state.num_channels {
         note = &mut (*state.channels.as_mut_ptr().offset(chan_idx as isize)).note;
-        (*note).key = ((*state.pattern_data.offset(pat_offset as isize) as libc::c_int
-            & 0xf as libc::c_int)
-            << 8 as libc::c_int) as libc::c_ushort;
+        (*note).key = ((*state.pattern_data.offset(pat_offset as isize) as i32 & 0xf as i32)
+            << 8 as i32) as u16;
         let ref mut fresh7 = (*note).key;
-        *fresh7 = (*fresh7 as libc::c_int
+        *fresh7 = (*fresh7 as i32
             | *state
                 .pattern_data
-                .offset((pat_offset + 1 as libc::c_int as libc::c_long) as isize)
-                as libc::c_int) as libc::c_ushort;
+                .offset((pat_offset + 1 as i32 as i64) as isize) as i32) as u16;
         (*note).instrument = (*state
             .pattern_data
-            .offset((pat_offset + 2 as libc::c_int as libc::c_long) as isize)
-            as libc::c_int
-            >> 4 as libc::c_int) as libc::c_uchar;
+            .offset((pat_offset + 2 as i32 as i64) as isize) as i32
+            >> 4 as i32) as u8;
         let ref mut fresh8 = (*note).instrument;
-        *fresh8 = (*fresh8 as libc::c_int
-            | *state.pattern_data.offset(pat_offset as isize) as libc::c_int & 0x10 as libc::c_int)
-            as libc::c_uchar;
+        *fresh8 = (*fresh8 as i32
+            | *state.pattern_data.offset(pat_offset as isize) as i32 & 0x10 as i32)
+            as u8;
         effect = (*state
             .pattern_data
-            .offset((pat_offset + 2 as libc::c_int as libc::c_long) as isize)
-            as libc::c_int
-            & 0xf as libc::c_int) as libc::c_long;
+            .offset((pat_offset + 2 as i32 as i64) as isize) as i32
+            & 0xf as i32) as i64;
         param = *state
             .pattern_data
-            .offset((pat_offset + 3 as libc::c_int as libc::c_long) as isize)
-            as libc::c_long;
-        pat_offset += 4 as libc::c_int as libc::c_long;
-        if effect == 0xe as libc::c_int as libc::c_long {
-            effect = 0x10 as libc::c_int as libc::c_long | param >> 4 as libc::c_int;
-            param &= 0xf as libc::c_int as libc::c_long;
+            .offset((pat_offset + 3 as i32 as i64) as isize) as i64;
+        pat_offset += 4 as i32 as i64;
+        if effect == 0xe as i32 as i64 {
+            effect = 0x10 as i32 as i64 | param >> 4 as i32;
+            param &= 0xf as i32 as i64;
         }
-        if effect == 0 as libc::c_int as libc::c_long && param > 0 as libc::c_int as libc::c_long {
-            effect = 0xe as libc::c_int as libc::c_long;
+        if effect == 0 as i32 as i64 && param > 0 as i32 as i64 {
+            effect = 0xe as i32 as i64;
         }
-        (*note).effect = effect as libc::c_uchar;
-        (*note).param = param as libc::c_uchar;
+        (*note).effect = effect as u8;
+        (*note).param = param as u8;
         channel_row(
             &mut *state.channels.as_mut_ptr().offset(chan_idx as isize),
             state,
@@ -753,16 +718,16 @@ unsafe fn sequence_row(state: &mut State) -> libc::c_long {
     }
     return song_end;
 }
-unsafe fn sequence_tick(state: &mut State) -> libc::c_long {
+unsafe fn sequence_tick(state: &mut State) -> i64 {
     let mut song_end;
     let mut chan_idx;
-    song_end = 0 as libc::c_int as libc::c_long;
+    song_end = 0 as i32 as i64;
     state.tick -= 1;
-    if state.tick <= 0 as libc::c_int as libc::c_long {
+    if state.tick <= 0 as i32 as i64 {
         state.tick = state.speed;
         song_end = sequence_row(state);
     } else {
-        chan_idx = 0 as libc::c_int as libc::c_long;
+        chan_idx = 0 as i32 as i64;
         while chan_idx < state.num_channels {
             channel_tick(
                 &mut *state.channels.as_mut_ptr().offset(chan_idx as isize),
@@ -773,35 +738,25 @@ unsafe fn sequence_tick(state: &mut State) -> libc::c_long {
     }
     return song_end;
 }
-unsafe fn resample(
-    chan: *mut Channel,
-    buf: *mut libc::c_short,
-    offset: libc::c_long,
-    count: libc::c_long,
-    state: &mut State,
-) {
+unsafe fn resample(chan: *mut Channel, buf: *mut i16, offset: i64, count: i64, state: &mut State) {
     let mut epos;
-    let mut buf_idx: libc::c_ulong = (offset << 1 as libc::c_int) as libc::c_ulong;
-    let buf_end: libc::c_ulong = (offset + count << 1 as libc::c_int) as libc::c_ulong;
-    let mut sidx: libc::c_ulong = (*chan).sample_idx;
-    let step: libc::c_ulong = (*chan).step;
-    let llen: libc::c_ulong = state.instruments[(*chan).instrument as usize].loop_length;
-    let lep1: libc::c_ulong =
-        (state.instruments[(*chan).instrument as usize].loop_start).wrapping_add(llen);
-    let sdat: *mut libc::c_schar = state.instruments[(*chan).instrument as usize].sample_data;
-    let mut ampl: libc::c_short = (if !buf.is_null() && (*chan).mute == 0 {
-        (*chan).ampl as libc::c_int
+    let mut buf_idx: u64 = (offset << 1 as i32) as u64;
+    let buf_end: u64 = (offset + count << 1 as i32) as u64;
+    let mut sidx: u64 = (*chan).sample_idx;
+    let step: u64 = (*chan).step;
+    let llen: u64 = state.instruments[(*chan).instrument as usize].loop_length;
+    let lep1: u64 = (state.instruments[(*chan).instrument as usize].loop_start).wrapping_add(llen);
+    let sdat: *mut i8 = state.instruments[(*chan).instrument as usize].sample_data;
+    let mut ampl: i16 = (if !buf.is_null() && (*chan).mute == 0 {
+        (*chan).ampl as i32
     } else {
-        0 as libc::c_int
-    }) as libc::c_short;
-    let lamp: libc::c_short = (ampl as libc::c_int
-        * (127 as libc::c_int - (*chan).panning as libc::c_int)
-        >> 5 as libc::c_int) as libc::c_short;
-    let ramp: libc::c_short =
-        (ampl as libc::c_int * (*chan).panning as libc::c_int >> 5 as libc::c_int) as libc::c_short;
+        0 as i32
+    }) as i16;
+    let lamp: i16 = (ampl as i32 * (127 as i32 - (*chan).panning as i32) >> 5 as i32) as i16;
+    let ramp: i16 = (ampl as i32 * (*chan).panning as i32 >> 5 as i32) as i16;
     while buf_idx < buf_end {
         if sidx >= lep1 {
-            if llen <= 16384 as libc::c_int as libc::c_ulong {
+            if llen <= 16384 as i32 as u64 {
                 sidx = lep1;
                 break;
             } else {
@@ -810,27 +765,22 @@ unsafe fn resample(
                 }
             }
         }
-        epos = sidx
-            .wrapping_add((buf_end.wrapping_sub(buf_idx) >> 1 as libc::c_int).wrapping_mul(step));
-        if lamp as libc::c_int != 0 || ramp as libc::c_int != 0 {
+        epos = sidx.wrapping_add((buf_end.wrapping_sub(buf_idx) >> 1 as i32).wrapping_mul(step));
+        if lamp as i32 != 0 || ramp as i32 != 0 {
             if epos > lep1 {
                 epos = lep1;
             }
-            if lamp as libc::c_int != 0 && ramp as libc::c_int != 0 {
+            if lamp as i32 != 0 && ramp as i32 != 0 {
                 while sidx < epos {
-                    ampl = *sdat.offset((sidx >> 14 as libc::c_int) as isize) as libc::c_short;
+                    ampl = *sdat.offset((sidx >> 14 as i32) as isize) as i16;
                     let fresh9 = buf_idx;
                     buf_idx = buf_idx.wrapping_add(1);
                     let ref mut fresh10 = *buf.offset(fresh9 as isize);
-                    *fresh10 = (*fresh10 as libc::c_int
-                        + (ampl as libc::c_int * lamp as libc::c_int >> 2 as libc::c_int))
-                        as libc::c_short;
+                    *fresh10 = (*fresh10 as i32 + (ampl as i32 * lamp as i32 >> 2 as i32)) as i16;
                     let fresh11 = buf_idx;
                     buf_idx = buf_idx.wrapping_add(1);
                     let ref mut fresh12 = *buf.offset(fresh11 as isize);
-                    *fresh12 = (*fresh12 as libc::c_int
-                        + (ampl as libc::c_int * ramp as libc::c_int >> 2 as libc::c_int))
-                        as libc::c_short;
+                    *fresh12 = (*fresh12 as i32 + (ampl as i32 * ramp as i32 >> 2 as i32)) as i16;
                     sidx = sidx.wrapping_add(step);
                 }
             } else {
@@ -839,13 +789,13 @@ unsafe fn resample(
                 }
                 while sidx < epos {
                     let ref mut fresh13 = *buf.offset(buf_idx as isize);
-                    *fresh13 = (*fresh13 as libc::c_int
-                        + *sdat.offset((sidx >> 14 as libc::c_int) as isize) as libc::c_int
-                            * ampl as libc::c_int) as libc::c_short;
-                    buf_idx = buf_idx.wrapping_add(2 as libc::c_int as libc::c_ulong);
+                    *fresh13 = (*fresh13 as i32
+                        + *sdat.offset((sidx >> 14 as i32) as isize) as i32 * ampl as i32)
+                        as i16;
+                    buf_idx = buf_idx.wrapping_add(2 as i32 as u64);
                     sidx = sidx.wrapping_add(step);
                 }
-                buf_idx &= -(2 as libc::c_int) as libc::c_ulong;
+                buf_idx &= -(2 as i32) as u64;
             }
         } else {
             buf_idx = buf_end;
@@ -855,39 +805,32 @@ unsafe fn resample(
     (*chan).sample_idx = sidx;
 }
 
-pub unsafe fn micromod_get_version() -> *const libc::c_char {
+pub unsafe fn micromod_get_version() -> *const i8 {
     return MICROMOD_VERSION;
 }
 
-pub unsafe fn micromod_calculate_mod_file_len(module_header: *mut libc::c_schar) -> libc::c_long {
+pub unsafe fn micromod_calculate_mod_file_len(module_header: *mut i8) -> i64 {
     let mut length;
     let numchan;
     let mut inst_idx;
     numchan = calculate_num_channels(module_header);
-    if numchan <= 0 as libc::c_int as libc::c_long {
-        return -(1 as libc::c_int) as libc::c_long;
+    if numchan <= 0 as i32 as i64 {
+        return -(1 as i32) as i64;
     }
-    length = 1084 as libc::c_int as libc::c_long
-        + 4 as libc::c_int as libc::c_long
-            * numchan
-            * 64 as libc::c_int as libc::c_long
-            * calculate_num_patterns(module_header);
-    inst_idx = 1 as libc::c_int as libc::c_long;
-    while inst_idx < 32 as libc::c_int as libc::c_long {
+    length = 1084 as i32 as i64
+        + 4 as i32 as i64 * numchan * 64 as i32 as i64 * calculate_num_patterns(module_header);
+    inst_idx = 1 as i32 as i64;
+    while inst_idx < 32 as i32 as i64 {
         length += unsigned_short_big_endian(
             module_header,
-            inst_idx * 30 as libc::c_int as libc::c_long + 12 as libc::c_int as libc::c_long,
-        ) * 2 as libc::c_int as libc::c_long;
+            inst_idx * 30 as i32 as i64 + 12 as i32 as i64,
+        ) * 2 as i32 as i64;
         inst_idx += 1;
     }
     return length;
 }
 
-pub unsafe fn micromod_initialise(
-    data: *mut libc::c_schar,
-    sampling_rate: libc::c_long,
-    state: &mut State,
-) -> libc::c_long {
+pub unsafe fn micromod_initialise(data: *mut i8, sampling_rate: i64, state: &mut State) -> i64 {
     let mut inst;
     let mut sample_data_offset;
     let mut inst_idx;
@@ -897,226 +840,206 @@ pub unsafe fn micromod_initialise(
     let mut loop_start;
     let mut loop_length;
     state.num_channels = calculate_num_channels(data);
-    if state.num_channels <= 0 as libc::c_int as libc::c_long {
-        state.num_channels = 0 as libc::c_int as libc::c_long;
-        return -(1 as libc::c_int) as libc::c_long;
+    if state.num_channels <= 0 as i32 as i64 {
+        state.num_channels = 0 as i32 as i64;
+        return -(1 as i32) as i64;
     }
-    if sampling_rate < 8000 as libc::c_int as libc::c_long {
-        return -(2 as libc::c_int) as libc::c_long;
+    if sampling_rate < 8000 as i32 as i64 {
+        return -(2 as i32) as i64;
     }
     state.module_data = data;
     state.sample_rate = sampling_rate;
-    state.song_length = (*state.module_data.offset(950 as libc::c_int as isize) as libc::c_int
-        & 0x7f as libc::c_int) as libc::c_long;
-    state.restart = (*state.module_data.offset(951 as libc::c_int as isize) as libc::c_int
-        & 0x7f as libc::c_int) as libc::c_long;
+    state.song_length =
+        (*state.module_data.offset(950 as i32 as isize) as i32 & 0x7f as i32) as i64;
+    state.restart = (*state.module_data.offset(951 as i32 as isize) as i32 & 0x7f as i32) as i64;
     if state.restart >= state.song_length {
-        state.restart = 0 as libc::c_int as libc::c_long;
+        state.restart = 0 as i32 as i64;
     }
-    state.sequence = (state.module_data as *mut libc::c_uchar).offset(952 as libc::c_int as isize);
-    state.pattern_data =
-        (state.module_data as *mut libc::c_uchar).offset(1084 as libc::c_int as isize);
+    state.sequence = (state.module_data as *mut u8).offset(952 as i32 as isize);
+    state.pattern_data = (state.module_data as *mut u8).offset(1084 as i32 as isize);
     state.num_patterns = calculate_num_patterns(state.module_data);
-    sample_data_offset = 1084 as libc::c_int as libc::c_long
-        + state.num_patterns
-            * 64 as libc::c_int as libc::c_long
-            * state.num_channels
-            * 4 as libc::c_int as libc::c_long;
-    inst_idx = 1 as libc::c_int as libc::c_long;
-    while inst_idx < 32 as libc::c_int as libc::c_long {
+    sample_data_offset = 1084 as i32 as i64
+        + state.num_patterns * 64 as i32 as i64 * state.num_channels * 4 as i32 as i64;
+    inst_idx = 1 as i32 as i64;
+    while inst_idx < 32 as i32 as i64 {
         inst = &mut *state.instruments.as_mut_ptr().offset(inst_idx as isize) as *mut Instrument;
         sample_length = unsigned_short_big_endian(
             state.module_data,
-            inst_idx * 30 as libc::c_int as libc::c_long + 12 as libc::c_int as libc::c_long,
-        ) * 2 as libc::c_int as libc::c_long;
-        fine_tune = (*state.module_data.offset(
-            (inst_idx * 30 as libc::c_int as libc::c_long + 14 as libc::c_int as libc::c_long)
-                as isize,
-        ) as libc::c_int
-            & 0xf as libc::c_int) as libc::c_long;
-        (*inst).fine_tune = ((fine_tune & 0x7 as libc::c_int as libc::c_long)
-            - (fine_tune & 0x8 as libc::c_int as libc::c_long)
-            + 8 as libc::c_int as libc::c_long) as libc::c_uchar;
-        volume = (*state.module_data.offset(
-            (inst_idx * 30 as libc::c_int as libc::c_long + 15 as libc::c_int as libc::c_long)
-                as isize,
-        ) as libc::c_int
-            & 0x7f as libc::c_int) as libc::c_long;
-        (*inst).volume = (if volume > 64 as libc::c_int as libc::c_long {
-            64 as libc::c_int as libc::c_long
+            inst_idx * 30 as i32 as i64 + 12 as i32 as i64,
+        ) * 2 as i32 as i64;
+        fine_tune = (*state
+            .module_data
+            .offset((inst_idx * 30 as i32 as i64 + 14 as i32 as i64) as isize)
+            as i32
+            & 0xf as i32) as i64;
+        (*inst).fine_tune = ((fine_tune & 0x7 as i32 as i64) - (fine_tune & 0x8 as i32 as i64)
+            + 8 as i32 as i64) as u8;
+        volume = (*state
+            .module_data
+            .offset((inst_idx * 30 as i32 as i64 + 15 as i32 as i64) as isize)
+            as i32
+            & 0x7f as i32) as i64;
+        (*inst).volume = (if volume > 64 as i32 as i64 {
+            64 as i32 as i64
         } else {
             volume
-        }) as libc::c_uchar;
+        }) as u8;
         loop_start = unsigned_short_big_endian(
             state.module_data,
-            inst_idx * 30 as libc::c_int as libc::c_long + 16 as libc::c_int as libc::c_long,
-        ) * 2 as libc::c_int as libc::c_long;
+            inst_idx * 30 as i32 as i64 + 16 as i32 as i64,
+        ) * 2 as i32 as i64;
         loop_length = unsigned_short_big_endian(
             state.module_data,
-            inst_idx * 30 as libc::c_int as libc::c_long + 18 as libc::c_int as libc::c_long,
-        ) * 2 as libc::c_int as libc::c_long;
+            inst_idx * 30 as i32 as i64 + 18 as i32 as i64,
+        ) * 2 as i32 as i64;
         if loop_start + loop_length > sample_length {
-            if loop_start / 2 as libc::c_int as libc::c_long + loop_length <= sample_length {
-                loop_start = loop_start / 2 as libc::c_int as libc::c_long;
+            if loop_start / 2 as i32 as i64 + loop_length <= sample_length {
+                loop_start = loop_start / 2 as i32 as i64;
             } else {
                 loop_length = sample_length - loop_start;
             }
         }
-        if loop_length < 4 as libc::c_int as libc::c_long {
+        if loop_length < 4 as i32 as i64 {
             loop_start = sample_length;
-            loop_length = 0 as libc::c_int as libc::c_long;
+            loop_length = 0 as i32 as i64;
         }
-        (*inst).loop_start = (loop_start << 14 as libc::c_int) as libc::c_ulong;
-        (*inst).loop_length = (loop_length << 14 as libc::c_int) as libc::c_ulong;
+        (*inst).loop_start = (loop_start << 14 as i32) as u64;
+        (*inst).loop_length = (loop_length << 14 as i32) as u64;
         let ref mut fresh14 = (*inst).sample_data;
         *fresh14 = state.module_data.offset(sample_data_offset as isize);
         sample_data_offset += sample_length;
         inst_idx += 1;
     }
-    state.c2_rate = (if state.num_channels > 4 as libc::c_int as libc::c_long {
-        8363 as libc::c_int
+    state.c2_rate = (if state.num_channels > 4 as i32 as i64 {
+        8363 as i32
     } else {
-        8287 as libc::c_int
-    }) as libc::c_long;
-    state.gain = (if state.num_channels > 4 as libc::c_int as libc::c_long {
-        32 as libc::c_int
+        8287 as i32
+    }) as i64;
+    state.gain = (if state.num_channels > 4 as i32 as i64 {
+        32 as i32
     } else {
-        64 as libc::c_int
-    }) as libc::c_long;
-    micromod_mute_channel(-(1 as libc::c_int) as libc::c_long, state);
-    micromod_set_position(0 as libc::c_int as libc::c_long, state);
-    return 0 as libc::c_int as libc::c_long;
+        64 as i32
+    }) as i64;
+    micromod_mute_channel(-(1 as i32) as i64, state);
+    micromod_set_position(0 as i32 as i64, state);
+    return 0 as i32 as i64;
 }
 
-pub unsafe fn micromod_get_string(
-    instrument: libc::c_long,
-    string: *mut libc::c_char,
-    state: &mut State,
-) {
+pub unsafe fn micromod_get_string(instrument: i64, string: *mut i8, state: &mut State) {
     let mut index;
     let mut offset;
     let mut length;
     let mut character;
-    if state.num_channels <= 0 as libc::c_int as libc::c_long {
-        *string.offset(0 as libc::c_int as isize) = 0 as libc::c_int as libc::c_char;
+    if state.num_channels <= 0 as i32 as i64 {
+        *string.offset(0 as i32 as isize) = 0 as i32 as i8;
         return;
     }
-    offset = 0 as libc::c_int as libc::c_long;
-    length = 20 as libc::c_int as libc::c_long;
-    if instrument > 0 as libc::c_int as libc::c_long
-        && instrument < 32 as libc::c_int as libc::c_long
-    {
-        offset = (instrument - 1 as libc::c_int as libc::c_long)
-            * 30 as libc::c_int as libc::c_long
-            + 20 as libc::c_int as libc::c_long;
-        length = 22 as libc::c_int as libc::c_long;
+    offset = 0 as i32 as i64;
+    length = 20 as i32 as i64;
+    if instrument > 0 as i32 as i64 && instrument < 32 as i32 as i64 {
+        offset = (instrument - 1 as i32 as i64) * 30 as i32 as i64 + 20 as i32 as i64;
+        length = 22 as i32 as i64;
     }
-    index = 0 as libc::c_int as libc::c_long;
+    index = 0 as i32 as i64;
     while index < length {
-        character = *state.module_data.offset((offset + index) as isize) as libc::c_long;
-        if character < 32 as libc::c_int as libc::c_long
-            || character > 126 as libc::c_int as libc::c_long
-        {
-            character = ' ' as i32 as libc::c_long;
+        character = *state.module_data.offset((offset + index) as isize) as i64;
+        if character < 32 as i32 as i64 || character > 126 as i32 as i64 {
+            character = ' ' as i32 as i64;
         }
-        *string.offset(index as isize) = character as libc::c_char;
+        *string.offset(index as isize) = character as i8;
         index += 1;
     }
-    *string.offset(length as isize) = 0 as libc::c_int as libc::c_char;
+    *string.offset(length as isize) = 0 as i32 as i8;
 }
 
-pub unsafe fn micromod_calculate_song_duration(state: &mut State) -> libc::c_long {
+pub unsafe fn micromod_calculate_song_duration(state: &mut State) -> i64 {
     let mut duration;
     let mut song_end;
-    duration = 0 as libc::c_int as libc::c_long;
-    if state.num_channels > 0 as libc::c_int as libc::c_long {
-        micromod_set_position(0 as libc::c_int as libc::c_long, state);
-        song_end = 0 as libc::c_int as libc::c_long;
+    duration = 0 as i32 as i64;
+    if state.num_channels > 0 as i32 as i64 {
+        micromod_set_position(0 as i32 as i64, state);
+        song_end = 0 as i32 as i64;
         while song_end == 0 {
             duration += state.tick_len;
             song_end = sequence_tick(state);
         }
-        micromod_set_position(0 as libc::c_int as libc::c_long, state);
+        micromod_set_position(0 as i32 as i64, state);
     }
     return duration;
 }
 
-pub unsafe fn micromod_set_position(mut pos: libc::c_long, state: &mut State) {
+pub unsafe fn micromod_set_position(mut pos: i64, state: &mut State) {
     let mut chan_idx;
     let mut chan;
-    if state.num_channels <= 0 as libc::c_int as libc::c_long {
+    if state.num_channels <= 0 as i32 as i64 {
         return;
     }
     if pos >= state.song_length {
-        pos = 0 as libc::c_int as libc::c_long;
+        pos = 0 as i32 as i64;
     }
     state.break_pattern = pos;
-    state.next_row = 0 as libc::c_int as libc::c_long;
-    state.tick = 1 as libc::c_int as libc::c_long;
-    state.speed = 6 as libc::c_int as libc::c_long;
-    set_tempo(125 as libc::c_int as libc::c_long, state);
-    state.pl_channel = -(1 as libc::c_int) as libc::c_long;
+    state.next_row = 0 as i32 as i64;
+    state.tick = 1 as i32 as i64;
+    state.speed = 6 as i32 as i64;
+    set_tempo(125 as i32 as i64, state);
+    state.pl_channel = -(1 as i32) as i64;
     state.pl_count = state.pl_channel;
-    state.random_seed = 0xabcdef as libc::c_int as libc::c_long;
-    chan_idx = 0 as libc::c_int as libc::c_long;
+    state.random_seed = 0xabcdef as i32 as i64;
+    chan_idx = 0 as i32 as i64;
     while chan_idx < state.num_channels {
         chan = &mut *state.channels.as_mut_ptr().offset(chan_idx as isize) as *mut Channel;
-        (*chan).id = chan_idx as libc::c_uchar;
+        (*chan).id = chan_idx as u8;
         let ref mut fresh15 = (*chan).assigned;
-        *fresh15 = 0 as libc::c_int as libc::c_uchar;
+        *fresh15 = 0 as i32 as u8;
         (*chan).instrument = *fresh15;
-        (*chan).volume = 0 as libc::c_int as libc::c_uchar;
-        match chan_idx & 0x3 as libc::c_int as libc::c_long {
+        (*chan).volume = 0 as i32 as u8;
+        match chan_idx & 0x3 as i32 as i64 {
             0 | 3 => {
-                (*chan).panning = 0 as libc::c_int as libc::c_uchar;
+                (*chan).panning = 0 as i32 as u8;
             }
             1 | 2 => {
-                (*chan).panning = 127 as libc::c_int as libc::c_uchar;
+                (*chan).panning = 127 as i32 as u8;
             }
             _ => {}
         }
         chan_idx += 1;
     }
     sequence_tick(state);
-    state.tick_offset = 0 as libc::c_int as libc::c_long;
+    state.tick_offset = 0 as i32 as i64;
 }
 
-pub unsafe fn micromod_mute_channel(channel: libc::c_long, state: &mut State) -> libc::c_long {
+pub unsafe fn micromod_mute_channel(channel: i64, state: &mut State) -> i64 {
     let mut chan_idx;
-    if channel < 0 as libc::c_int as libc::c_long {
-        chan_idx = 0 as libc::c_int as libc::c_long;
+    if channel < 0 as i32 as i64 {
+        chan_idx = 0 as i32 as i64;
         while chan_idx < state.num_channels {
-            state.channels[chan_idx as usize].mute = 0 as libc::c_int as libc::c_uchar;
+            state.channels[chan_idx as usize].mute = 0 as i32 as u8;
             chan_idx += 1;
         }
     } else if channel < state.num_channels {
-        state.channels[channel as usize].mute = 1 as libc::c_int as libc::c_uchar;
+        state.channels[channel as usize].mute = 1 as i32 as u8;
     }
     return state.num_channels;
 }
 
-pub unsafe fn micromod_set_gain(value: libc::c_long, state: &mut State) {
+pub unsafe fn micromod_set_gain(value: i64, state: &mut State) {
     state.gain = value;
 }
 
-pub unsafe fn micromod_get_audio(
-    output_buffer: *mut libc::c_short,
-    mut count: libc::c_long,
-    state: &mut State,
-) {
+pub unsafe fn micromod_get_audio(output_buffer: *mut i16, mut count: i64, state: &mut State) {
     let mut offset;
     let mut remain;
     let mut chan_idx;
-    if state.num_channels <= 0 as libc::c_int as libc::c_long {
+    if state.num_channels <= 0 as i32 as i64 {
         return;
     }
-    offset = 0 as libc::c_int as libc::c_long;
-    while count > 0 as libc::c_int as libc::c_long {
+    offset = 0 as i32 as i64;
+    while count > 0 as i32 as i64 {
         remain = state.tick_len - state.tick_offset;
         if remain > count {
             remain = count;
         }
-        chan_idx = 0 as libc::c_int as libc::c_long;
+        chan_idx = 0 as i32 as i64;
         while chan_idx < state.num_channels {
             resample(
                 &mut *state.channels.as_mut_ptr().offset(chan_idx as isize),
@@ -1130,7 +1053,7 @@ pub unsafe fn micromod_get_audio(
         state.tick_offset += remain;
         if state.tick_offset == state.tick_len {
             sequence_tick(state);
-            state.tick_offset = 0 as libc::c_int as libc::c_long;
+            state.tick_offset = 0 as i32 as i64;
         }
         offset += remain;
         count -= remain;
