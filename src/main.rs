@@ -146,9 +146,9 @@ unsafe fn calculate_num_channels(module_header: *const i8) -> i64 {
     }
     numchan
 }
-unsafe fn unsigned_short_big_endian(buf: *const i8, offset: i64) -> i64 {
-    ((*buf.offset(offset as isize) as i32 & 0xff_i32) << 8
-        | *buf.offset((offset + 1) as isize) as i32 & 0xff_i32) as i64
+fn unsigned_short_big_endian(buf: &[i8], offset: i64) -> i64 {
+    ((buf[offset as usize] as i32 & 0xff_i32) << 8 | buf[(offset + 1) as usize] as i32 & 0xff_i32)
+        as i64
 }
 fn set_tempo(tempo: i64, tick_len: &mut i64, sample_rate: &mut i64) {
     *tick_len = ((*sample_rate << 1) + (*sample_rate >> 1)) / tempo;
@@ -701,7 +701,7 @@ pub unsafe fn micromod_calculate_mod_file_len(module_header: &[i8]) -> i64 {
     length = 1084 + 4 * numchan * 64 * calculate_num_patterns(module_header);
     inst_idx = 1;
     while inst_idx < 32 {
-        length += unsigned_short_big_endian(module_header.as_ptr(), inst_idx * 30 + 12) * 2;
+        length += unsigned_short_big_endian(module_header, inst_idx * 30 + 12) * 2;
         inst_idx += 1;
     }
     length
@@ -761,8 +761,7 @@ impl State<'_> {
         inst_idx = 1;
         while inst_idx < 32 {
             inst = &mut state.instruments[inst_idx as usize];
-            sample_length =
-                unsigned_short_big_endian(state.module_data.as_ptr(), inst_idx * 30 + 12) * 2;
+            sample_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 12) * 2;
             fine_tune = (*state
                 .module_data
                 .as_ptr()
@@ -775,10 +774,8 @@ impl State<'_> {
                 .offset((inst_idx * 30 + 15) as isize) as i32
                 & 0x7f_i32) as i64;
             inst.volume = (if volume > 64 { 64 } else { volume }) as u8;
-            loop_start =
-                unsigned_short_big_endian(state.module_data.as_ptr(), inst_idx * 30 + 16) * 2;
-            loop_length =
-                unsigned_short_big_endian(state.module_data.as_ptr(), inst_idx * 30 + 18) * 2;
+            loop_start = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 16) * 2;
+            loop_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 18) * 2;
             if loop_start + loop_length > sample_length {
                 if loop_start / 2 + loop_length <= sample_length {
                     loop_start /= 2;
