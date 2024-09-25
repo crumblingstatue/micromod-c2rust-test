@@ -93,14 +93,14 @@ pub struct State<'src> {
     num_channels: i64,
 }
 
-unsafe fn calculate_num_patterns(module_header: *const i8) -> i64 {
+fn calculate_num_patterns(module_header: &[i8]) -> i64 {
     let mut num_patterns_0;
     let mut order_entry;
     let mut pattern_0;
     num_patterns_0 = 0;
     pattern_0 = 0;
     while pattern_0 < 128 {
-        order_entry = (*module_header.offset((952 + pattern_0) as isize) as i32 & 0x7f_i32) as i64;
+        order_entry = (module_header[(952 + pattern_0) as usize] as i32 & 0x7f_i32) as i64;
         if order_entry >= num_patterns_0 {
             num_patterns_0 = order_entry + 1;
         }
@@ -690,18 +690,18 @@ pub fn micromod_get_version() -> &'static str {
     MICROMOD_VERSION
 }
 
-pub unsafe fn micromod_calculate_mod_file_len(module_header: *const i8) -> i64 {
+pub unsafe fn micromod_calculate_mod_file_len(module_header: &[i8]) -> i64 {
     let mut length;
 
     let mut inst_idx;
-    let numchan = calculate_num_channels(module_header);
+    let numchan = calculate_num_channels(module_header.as_ptr());
     if numchan <= 0 {
         return -1_i32 as i64;
     }
     length = 1084 + 4 * numchan * 64 * calculate_num_patterns(module_header);
     inst_idx = 1;
     while inst_idx < 32 {
-        length += unsigned_short_big_endian(module_header, inst_idx * 30 + 12) * 2;
+        length += unsigned_short_big_endian(module_header.as_ptr(), inst_idx * 30 + 12) * 2;
         inst_idx += 1;
     }
     length
@@ -756,7 +756,7 @@ impl State<'_> {
             num_patterns: Default::default(),
             num_channels,
         };
-        state.num_patterns = calculate_num_patterns(state.module_data.as_ptr());
+        state.num_patterns = calculate_num_patterns(state.module_data);
         sample_data_offset = 1084 + state.num_patterns * 64 * state.num_channels * 4;
         inst_idx = 1;
         while inst_idx < 32 {
