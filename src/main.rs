@@ -854,11 +854,11 @@ unsafe fn resample(
     }
     (*chan).sample_idx = sidx;
 }
-#[no_mangle]
+
 pub unsafe fn micromod_get_version() -> *const libc::c_char {
     return MICROMOD_VERSION;
 }
-#[no_mangle]
+
 pub unsafe fn micromod_calculate_mod_file_len(module_header: *mut libc::c_schar) -> libc::c_long {
     let mut length;
     let numchan;
@@ -882,7 +882,7 @@ pub unsafe fn micromod_calculate_mod_file_len(module_header: *mut libc::c_schar)
     }
     return length;
 }
-#[no_mangle]
+
 pub unsafe fn micromod_initialise(
     data: *mut libc::c_schar,
     sampling_rate: libc::c_long,
@@ -987,7 +987,7 @@ pub unsafe fn micromod_initialise(
     micromod_set_position(0 as libc::c_int as libc::c_long, state);
     return 0 as libc::c_int as libc::c_long;
 }
-#[no_mangle]
+
 pub unsafe fn micromod_get_string(
     instrument: libc::c_long,
     string: *mut libc::c_char,
@@ -1024,7 +1024,7 @@ pub unsafe fn micromod_get_string(
     }
     *string.offset(length as isize) = 0 as libc::c_int as libc::c_char;
 }
-#[no_mangle]
+
 pub unsafe fn micromod_calculate_song_duration(state: &mut State) -> libc::c_long {
     let mut duration;
     let mut song_end;
@@ -1040,7 +1040,7 @@ pub unsafe fn micromod_calculate_song_duration(state: &mut State) -> libc::c_lon
     }
     return duration;
 }
-#[no_mangle]
+
 pub unsafe fn micromod_set_position(mut pos: libc::c_long, state: &mut State) {
     let mut chan_idx;
     let mut chan;
@@ -1080,7 +1080,7 @@ pub unsafe fn micromod_set_position(mut pos: libc::c_long, state: &mut State) {
     sequence_tick(state);
     state.tick_offset = 0 as libc::c_int as libc::c_long;
 }
-#[no_mangle]
+
 pub unsafe fn micromod_mute_channel(channel: libc::c_long, state: &mut State) -> libc::c_long {
     let mut chan_idx;
     if channel < 0 as libc::c_int as libc::c_long {
@@ -1094,11 +1094,11 @@ pub unsafe fn micromod_mute_channel(channel: libc::c_long, state: &mut State) ->
     }
     return state.num_channels;
 }
-#[no_mangle]
+
 pub unsafe fn micromod_set_gain(value: libc::c_long, state: &mut State) {
     state.gain = value;
 }
-#[no_mangle]
+
 pub unsafe fn micromod_get_audio(
     output_buffer: *mut libc::c_short,
     mut count: libc::c_long,
