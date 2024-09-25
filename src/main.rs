@@ -185,26 +185,26 @@ unsafe fn unsigned_short_big_endian(buf: *const i8, offset: i64) -> i64 {
 unsafe fn set_tempo(tempo: i64, state: &mut State) {
     state.tick_len = ((state.sample_rate << 1) + (state.sample_rate >> 1)) / tempo;
 }
-unsafe fn update_frequency(chan: *mut Channel, state: &mut State) {
+unsafe fn update_frequency(chan: &mut Channel, state: &mut State) {
     let mut period;
     let mut volume;
 
-    period = ((*chan).period as i32 + (*chan).vibrato_add as i32) as i64;
-    period = (period * ARP_TUNING[(*chan).arpeggio_add as usize] as i64) >> 11;
+    period = (chan.period as i32 + chan.vibrato_add as i32) as i64;
+    period = (period * ARP_TUNING[chan.arpeggio_add as usize] as i64) >> 11;
     period = (period >> 1) + (period & 1);
     if period < 14 {
         period = 6848;
     }
     let freq = (state.c2_rate * 428 / period) as u64;
-    (*chan).step = (freq << 14).wrapping_div(state.sample_rate as u64);
-    volume = ((*chan).volume as i32 + (*chan).tremolo_add as i32) as i64;
+    chan.step = (freq << 14).wrapping_div(state.sample_rate as u64);
+    volume = (chan.volume as i32 + chan.tremolo_add as i32) as i64;
     if volume > 64 {
         volume = 64;
     }
     if volume < 0 {
         volume = 0;
     }
-    (*chan).ampl = ((volume * state.gain) >> 5) as u8;
+    chan.ampl = ((volume * state.gain) >> 5) as u8;
 }
 unsafe fn tone_portamento(chan: *mut Channel) {
     let mut source;
@@ -310,33 +310,33 @@ unsafe fn trigger(channel: *mut Channel, state: &mut State) {
         }
     }
 }
-unsafe fn channel_row(chan: *mut Channel, state: &mut State) {
+unsafe fn channel_row(chan: &mut Channel, state: &mut State) {
     let volume;
     let period;
-    let effect = (*chan).note.effect as i64;
-    let param = (*chan).note.param as i64;
-    let fresh0 = &mut (*chan).fx_count;
+    let effect = chan.note.effect as i64;
+    let param = chan.note.param as i64;
+    let fresh0 = &mut chan.fx_count;
     *fresh0 = 0;
-    let fresh1 = &mut (*chan).arpeggio_add;
+    let fresh1 = &mut chan.arpeggio_add;
     *fresh1 = *fresh0 as i8;
-    let fresh2 = &mut (*chan).tremolo_add;
+    let fresh2 = &mut chan.tremolo_add;
     *fresh2 = *fresh1;
-    (*chan).vibrato_add = *fresh2;
+    chan.vibrato_add = *fresh2;
     if !(effect == 0x1d_i32 as i64 && param > 0) {
         trigger(chan, state);
     }
     match effect {
         3 => {
             if param > 0 {
-                (*chan).porta_speed = param as u8;
+                chan.porta_speed = param as u8;
             }
         }
         4 => {
             if param & 0xf0 > 0 {
-                (*chan).vibrato_speed = (param >> 4) as u8;
+                chan.vibrato_speed = (param >> 4) as u8;
             }
             if param & 0xf_i32 as i64 > 0 {
-                (*chan).vibrato_depth = (param & 0xf_i32 as i64) as u8;
+                chan.vibrato_depth = (param & 0xf_i32 as i64) as u8;
             }
             vibrato(chan, state);
         }
@@ -345,16 +345,16 @@ unsafe fn channel_row(chan: *mut Channel, state: &mut State) {
         }
         7 => {
             if param & 0xf0 > 0 {
-                (*chan).tremolo_speed = (param >> 4) as u8;
+                chan.tremolo_speed = (param >> 4) as u8;
             }
             if param & 0xf_i32 as i64 > 0 {
-                (*chan).tremolo_depth = (param & 0xf_i32 as i64) as u8;
+                chan.tremolo_depth = (param & 0xf_i32 as i64) as u8;
             }
             tremolo(chan, state);
         }
         8 => {
             if state.num_channels != 4 {
-                (*chan).panning = (if param < 128 { param } else { 127 }) as u8;
+                chan.panning = (if param < 128 { param } else { 127 }) as u8;
             }
         }
         11 => {
@@ -364,7 +364,7 @@ unsafe fn channel_row(chan: *mut Channel, state: &mut State) {
             }
         }
         12 => {
-            (*chan).volume = (if param > 64 { 64 } else { param }) as u8;
+            chan.volume = (if param > 64 { 64 } else { param }) as u8;
         }
         13 => {
             if state.pl_count < 0 {
@@ -388,32 +388,32 @@ unsafe fn channel_row(chan: *mut Channel, state: &mut State) {
             }
         }
         17 => {
-            period = (*chan).period as i64 - param;
-            (*chan).period = (if period < 0 { 0 } else { period }) as u16;
+            period = chan.period as i64 - param;
+            chan.period = (if period < 0 { 0 } else { period }) as u16;
         }
         18 => {
-            period = (*chan).period as i64 + param;
-            (*chan).period = (if period > 65535 { 65535 } else { period }) as u16;
+            period = chan.period as i64 + param;
+            chan.period = (if period > 65535 { 65535 } else { period }) as u16;
         }
         20 => {
             if param < 8 {
-                (*chan).vibrato_type = param as u8;
+                chan.vibrato_type = param as u8;
             }
         }
         22 => {
             if param == 0 {
-                (*chan).pl_row = state.row as u8;
+                chan.pl_row = state.row as u8;
             }
-            if ((*chan).pl_row as i64) < state.row && state.break_pattern < 0 {
+            if (chan.pl_row as i64) < state.row && state.break_pattern < 0 {
                 if state.pl_count < 0 {
                     state.pl_count = param;
-                    state.pl_channel = (*chan).id as i64;
+                    state.pl_channel = chan.id as i64;
                 }
-                if state.pl_channel == (*chan).id as i64 {
+                if state.pl_channel == chan.id as i64 {
                     if state.pl_count == 0 {
-                        (*chan).pl_row = (state.row + 1) as u8;
+                        chan.pl_row = (state.row + 1) as u8;
                     } else {
-                        state.next_row = (*chan).pl_row as i64;
+                        state.next_row = chan.pl_row as i64;
                     }
                     state.pl_count -= 1;
                 }
@@ -421,20 +421,20 @@ unsafe fn channel_row(chan: *mut Channel, state: &mut State) {
         }
         23 => {
             if param < 8 {
-                (*chan).tremolo_type = param as u8;
+                chan.tremolo_type = param as u8;
             }
         }
         26 => {
-            volume = (*chan).volume as i64 + param;
-            (*chan).volume = (if volume > 64 { 64 } else { volume }) as u8;
+            volume = chan.volume as i64 + param;
+            chan.volume = (if volume > 64 { 64 } else { volume }) as u8;
         }
         27 => {
-            volume = (*chan).volume as i64 - param;
-            (*chan).volume = (if volume < 0 { 0 } else { volume }) as u8;
+            volume = chan.volume as i64 - param;
+            chan.volume = (if volume < 0 { 0 } else { volume }) as u8;
         }
         28 => {
             if param <= 0 {
-                (*chan).volume = 0;
+                chan.volume = 0;
             }
         }
         30 => {
@@ -609,22 +609,22 @@ unsafe fn sequence_tick(state: &mut State) -> i64 {
     }
     song_end
 }
-unsafe fn resample(chan: *mut Channel, buf: *mut i16, offset: i64, count: i64, state: &mut State) {
+unsafe fn resample(chan: &mut Channel, buf: *mut i16, offset: i64, count: i64, state: &mut State) {
     let mut epos;
     let mut buf_idx: u64 = (offset << 1) as u64;
     let buf_end: u64 = ((offset + count) << 1) as u64;
-    let mut sidx: u64 = (*chan).sample_idx;
-    let step: u64 = (*chan).step;
-    let llen: u64 = state.instruments[(*chan).instrument as usize].loop_length;
-    let lep1: u64 = (state.instruments[(*chan).instrument as usize].loop_start).wrapping_add(llen);
-    let sdat: *const i8 = state.instruments[(*chan).instrument as usize].sample_data;
-    let mut ampl: i16 = (if !buf.is_null() && (*chan).mute == 0 {
-        (*chan).ampl as i32
+    let mut sidx: u64 = chan.sample_idx;
+    let step: u64 = chan.step;
+    let llen: u64 = state.instruments[chan.instrument as usize].loop_length;
+    let lep1: u64 = (state.instruments[chan.instrument as usize].loop_start).wrapping_add(llen);
+    let sdat: *const i8 = state.instruments[chan.instrument as usize].sample_data;
+    let mut ampl: i16 = (if !buf.is_null() && chan.mute == 0 {
+        chan.ampl as i32
     } else {
         0
     }) as i16;
-    let lamp: i16 = ((ampl as i32 * (127_i32 - (*chan).panning as i32)) >> 5) as i16;
-    let ramp: i16 = ((ampl as i32 * (*chan).panning as i32) >> 5) as i16;
+    let lamp: i16 = ((ampl as i32 * (127_i32 - chan.panning as i32)) >> 5) as i16;
+    let ramp: i16 = ((ampl as i32 * chan.panning as i32) >> 5) as i16;
     while buf_idx < buf_end {
         if sidx >= lep1 {
             if llen <= 16384 {
@@ -673,7 +673,7 @@ unsafe fn resample(chan: *mut Channel, buf: *mut i16, offset: i64, count: i64, s
             sidx = epos;
         }
     }
-    (*chan).sample_idx = sidx;
+    chan.sample_idx = sidx;
 }
 
 pub unsafe fn micromod_get_version() -> *const i8 {
