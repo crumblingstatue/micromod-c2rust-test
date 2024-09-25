@@ -181,8 +181,8 @@ unsafe fn unsigned_short_big_endian(buf: *const i8, offset: i64) -> i64 {
     ((*buf.offset(offset as isize) as i32 & 0xff_i32) << 8
         | *buf.offset((offset + 1) as isize) as i32 & 0xff_i32) as i64
 }
-fn set_tempo(tempo: i64, state: &mut State) {
-    state.tick_len = ((state.sample_rate << 1) + (state.sample_rate >> 1)) / tempo;
+fn set_tempo(tempo: i64, tick_len: &mut i64, sample_rate: &mut i64) {
+    *tick_len = ((*sample_rate << 1) + (*sample_rate >> 1)) / tempo;
 }
 fn update_frequency(chan: &mut Channel, sample_rate: &mut i64, gain: &mut i64, c2_rate: &mut i64) {
     let mut period;
@@ -382,7 +382,7 @@ fn channel_row(chan: &mut Channel, state: &mut State) {
                     state.speed = param;
                     state.tick = state.speed;
                 } else {
-                    set_tempo(param, state);
+                    set_tempo(param, &mut state.tick_len, &mut state.sample_rate);
                 }
             }
         }
@@ -829,7 +829,7 @@ pub unsafe fn micromod_set_position(mut pos: i64, state: &mut State) {
     state.next_row = 0;
     state.tick = 1;
     state.speed = 6;
-    set_tempo(125, state);
+    set_tempo(125, &mut state.tick_len, &mut state.sample_rate);
     state.pl_channel = -1_i32 as i64;
     state.pl_count = state.pl_channel;
     state.random_seed = 0xabcdef_i32 as i64;
