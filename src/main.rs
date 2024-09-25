@@ -189,7 +189,7 @@ impl Default for State {
     }
 }
 
-unsafe extern "C" fn calculate_num_patterns(module_header: *mut libc::c_schar) -> libc::c_long {
+unsafe fn calculate_num_patterns(module_header: *mut libc::c_schar) -> libc::c_long {
     let mut num_patterns_0;
     let mut order_entry;
     let mut pattern_0;
@@ -207,7 +207,7 @@ unsafe extern "C" fn calculate_num_patterns(module_header: *mut libc::c_schar) -
     }
     return num_patterns_0;
 }
-unsafe extern "C" fn calculate_num_channels(module_header: *mut libc::c_schar) -> libc::c_long {
+unsafe fn calculate_num_channels(module_header: *mut libc::c_schar) -> libc::c_long {
     let mut numchan: libc::c_long = 0;
     let mut current_block_3: u64;
     match (*module_header.offset(1082 as libc::c_int as isize) as libc::c_int) << 8 as libc::c_int
@@ -257,19 +257,16 @@ unsafe extern "C" fn calculate_num_channels(module_header: *mut libc::c_schar) -
     }
     return numchan;
 }
-unsafe extern "C" fn unsigned_short_big_endian(
-    buf: *mut libc::c_schar,
-    offset: libc::c_long,
-) -> libc::c_long {
+unsafe fn unsigned_short_big_endian(buf: *mut libc::c_schar, offset: libc::c_long) -> libc::c_long {
     return ((*buf.offset(offset as isize) as libc::c_int & 0xff as libc::c_int) << 8 as libc::c_int
         | *buf.offset((offset + 1 as libc::c_int as libc::c_long) as isize) as libc::c_int
             & 0xff as libc::c_int) as libc::c_long;
 }
-unsafe extern "C" fn set_tempo(tempo: libc::c_long, state: &mut State) {
+unsafe fn set_tempo(tempo: libc::c_long, state: &mut State) {
     state.tick_len =
         ((state.sample_rate << 1 as libc::c_int) + (state.sample_rate >> 1 as libc::c_int)) / tempo;
 }
-unsafe extern "C" fn update_frequency(chan: *mut Channel, state: &mut State) {
+unsafe fn update_frequency(chan: *mut Channel, state: &mut State) {
     let mut period;
     let mut volume;
     let freq;
@@ -291,7 +288,7 @@ unsafe extern "C" fn update_frequency(chan: *mut Channel, state: &mut State) {
     }
     (*chan).ampl = (volume * state.gain >> 5 as libc::c_int) as libc::c_uchar;
 }
-unsafe extern "C" fn tone_portamento(chan: *mut Channel) {
+unsafe fn tone_portamento(chan: *mut Channel) {
     let mut source;
     let dest;
     source = (*chan).period as libc::c_long;
@@ -309,7 +306,7 @@ unsafe extern "C" fn tone_portamento(chan: *mut Channel) {
     }
     (*chan).period = source as libc::c_ushort;
 }
-unsafe extern "C" fn volume_slide(chan: *mut Channel, param: libc::c_long) {
+unsafe fn volume_slide(chan: *mut Channel, param: libc::c_long) {
     let mut volume;
     volume = (*chan).volume as libc::c_long + (param >> 4 as libc::c_int)
         - (param & 0xf as libc::c_int as libc::c_long);
@@ -321,11 +318,7 @@ unsafe extern "C" fn volume_slide(chan: *mut Channel, param: libc::c_long) {
     }
     (*chan).volume = volume as libc::c_uchar;
 }
-unsafe extern "C" fn waveform(
-    phase: libc::c_long,
-    type_0: libc::c_long,
-    state: &mut State,
-) -> libc::c_long {
+unsafe fn waveform(phase: libc::c_long, type_0: libc::c_long, state: &mut State) -> libc::c_long {
     let mut amplitude: libc::c_long = 0 as libc::c_int as libc::c_long;
     match type_0 & 0x3 as libc::c_int as libc::c_long {
         0 => {
@@ -356,7 +349,7 @@ unsafe extern "C" fn waveform(
     }
     return amplitude;
 }
-unsafe extern "C" fn vibrato(chan: *mut Channel, state: &mut State) {
+unsafe fn vibrato(chan: *mut Channel, state: &mut State) {
     (*chan).vibrato_add = (waveform(
         (*chan).vibrato_phase as libc::c_long,
         (*chan).vibrato_type as libc::c_long,
@@ -364,7 +357,7 @@ unsafe extern "C" fn vibrato(chan: *mut Channel, state: &mut State) {
     ) * (*chan).vibrato_depth as libc::c_long
         >> 7 as libc::c_int) as libc::c_schar;
 }
-unsafe extern "C" fn tremolo(chan: *mut Channel, state: &mut State) {
+unsafe fn tremolo(chan: *mut Channel, state: &mut State) {
     (*chan).tremolo_add = (waveform(
         (*chan).tremolo_phase as libc::c_long,
         (*chan).tremolo_type as libc::c_long,
@@ -372,7 +365,7 @@ unsafe extern "C" fn tremolo(chan: *mut Channel, state: &mut State) {
     ) * (*chan).tremolo_depth as libc::c_long
         >> 6 as libc::c_int) as libc::c_schar;
 }
-unsafe extern "C" fn trigger(channel: *mut Channel, state: &mut State) {
+unsafe fn trigger(channel: *mut Channel, state: &mut State) {
     let period;
     let ins;
     ins = (*channel).note.instrument as libc::c_long;
@@ -416,7 +409,7 @@ unsafe extern "C" fn trigger(channel: *mut Channel, state: &mut State) {
         }
     }
 }
-unsafe extern "C" fn channel_row(chan: *mut Channel, state: &mut State) {
+unsafe fn channel_row(chan: *mut Channel, state: &mut State) {
     let effect;
     let param;
     let volume;
@@ -583,7 +576,7 @@ unsafe extern "C" fn channel_row(chan: *mut Channel, state: &mut State) {
     }
     update_frequency(chan, state);
 }
-unsafe extern "C" fn channel_tick(chan: *mut Channel, state: &mut State) {
+unsafe fn channel_tick(chan: *mut Channel, state: &mut State) {
     let effect;
     let param;
     let period;
@@ -674,7 +667,7 @@ unsafe extern "C" fn channel_tick(chan: *mut Channel, state: &mut State) {
         update_frequency(chan, state);
     }
 }
-unsafe extern "C" fn sequence_row(state: &mut State) -> libc::c_long {
+unsafe fn sequence_row(state: &mut State) -> libc::c_long {
     let mut song_end;
     let mut chan_idx;
     let mut pat_offset;
@@ -760,7 +753,7 @@ unsafe extern "C" fn sequence_row(state: &mut State) -> libc::c_long {
     }
     return song_end;
 }
-unsafe extern "C" fn sequence_tick(state: &mut State) -> libc::c_long {
+unsafe fn sequence_tick(state: &mut State) -> libc::c_long {
     let mut song_end;
     let mut chan_idx;
     song_end = 0 as libc::c_int as libc::c_long;
@@ -780,7 +773,7 @@ unsafe extern "C" fn sequence_tick(state: &mut State) -> libc::c_long {
     }
     return song_end;
 }
-unsafe extern "C" fn resample(
+unsafe fn resample(
     chan: *mut Channel,
     buf: *mut libc::c_short,
     offset: libc::c_long,
@@ -862,13 +855,11 @@ unsafe extern "C" fn resample(
     (*chan).sample_idx = sidx;
 }
 #[no_mangle]
-pub unsafe extern "C" fn micromod_get_version() -> *const libc::c_char {
+pub unsafe fn micromod_get_version() -> *const libc::c_char {
     return MICROMOD_VERSION;
 }
 #[no_mangle]
-pub unsafe extern "C" fn micromod_calculate_mod_file_len(
-    module_header: *mut libc::c_schar,
-) -> libc::c_long {
+pub unsafe fn micromod_calculate_mod_file_len(module_header: *mut libc::c_schar) -> libc::c_long {
     let mut length;
     let numchan;
     let mut inst_idx;
@@ -892,7 +883,7 @@ pub unsafe extern "C" fn micromod_calculate_mod_file_len(
     return length;
 }
 #[no_mangle]
-pub unsafe extern "C" fn micromod_initialise(
+pub unsafe fn micromod_initialise(
     data: *mut libc::c_schar,
     sampling_rate: libc::c_long,
     state: &mut State,
@@ -997,7 +988,7 @@ pub unsafe extern "C" fn micromod_initialise(
     return 0 as libc::c_int as libc::c_long;
 }
 #[no_mangle]
-pub unsafe extern "C" fn micromod_get_string(
+pub unsafe fn micromod_get_string(
     instrument: libc::c_long,
     string: *mut libc::c_char,
     state: &mut State,
@@ -1034,7 +1025,7 @@ pub unsafe extern "C" fn micromod_get_string(
     *string.offset(length as isize) = 0 as libc::c_int as libc::c_char;
 }
 #[no_mangle]
-pub unsafe extern "C" fn micromod_calculate_song_duration(state: &mut State) -> libc::c_long {
+pub unsafe fn micromod_calculate_song_duration(state: &mut State) -> libc::c_long {
     let mut duration;
     let mut song_end;
     duration = 0 as libc::c_int as libc::c_long;
@@ -1050,7 +1041,7 @@ pub unsafe extern "C" fn micromod_calculate_song_duration(state: &mut State) -> 
     return duration;
 }
 #[no_mangle]
-pub unsafe extern "C" fn micromod_set_position(mut pos: libc::c_long, state: &mut State) {
+pub unsafe fn micromod_set_position(mut pos: libc::c_long, state: &mut State) {
     let mut chan_idx;
     let mut chan;
     if state.num_channels <= 0 as libc::c_int as libc::c_long {
@@ -1090,10 +1081,7 @@ pub unsafe extern "C" fn micromod_set_position(mut pos: libc::c_long, state: &mu
     state.tick_offset = 0 as libc::c_int as libc::c_long;
 }
 #[no_mangle]
-pub unsafe extern "C" fn micromod_mute_channel(
-    channel: libc::c_long,
-    state: &mut State,
-) -> libc::c_long {
+pub unsafe fn micromod_mute_channel(channel: libc::c_long, state: &mut State) -> libc::c_long {
     let mut chan_idx;
     if channel < 0 as libc::c_int as libc::c_long {
         chan_idx = 0 as libc::c_int as libc::c_long;
@@ -1107,11 +1095,11 @@ pub unsafe extern "C" fn micromod_mute_channel(
     return state.num_channels;
 }
 #[no_mangle]
-pub unsafe extern "C" fn micromod_set_gain(value: libc::c_long, state: &mut State) {
+pub unsafe fn micromod_set_gain(value: libc::c_long, state: &mut State) {
     state.gain = value;
 }
 #[no_mangle]
-pub unsafe extern "C" fn micromod_get_audio(
+pub unsafe fn micromod_get_audio(
     output_buffer: *mut libc::c_short,
     mut count: libc::c_long,
     state: &mut State,
