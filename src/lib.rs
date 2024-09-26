@@ -487,10 +487,8 @@ fn sequence_row(
             song_end = true;
         }
         playback.pattern = playback.break_pattern;
-        let mut chan_idx = 0;
-        while chan_idx < src.num_channels {
-            channels[chan_idx as usize].pl_row = 0;
-            chan_idx += 1;
+        for chan in &mut *channels {
+            chan.pl_row = 0
         }
         playback.break_pattern = -1;
     }
@@ -527,23 +525,20 @@ fn sequence_row(
 }
 fn sequence_tick(mm: &mut MmC2r) -> bool {
     let mut song_end = false;
-    let mut chan_idx;
     mm.playback.tick -= 1;
     if mm.playback.tick <= 0 {
         mm.playback.tick = mm.playback.speed;
         song_end = sequence_row(mm);
     } else {
-        chan_idx = 0;
-        while chan_idx < mm.src.num_channels {
+        for chan in &mut mm.channels {
             channel_tick(
-                &mut mm.channels[chan_idx as usize],
+                chan,
                 mm.sample_rate,
                 mm.playback.gain,
                 mm.playback.c2_rate,
                 &mut mm.playback.random_seed,
                 &mm.src.instruments,
             );
-            chan_idx += 1;
         }
     }
     song_end
@@ -726,16 +721,14 @@ impl MmC2r<'_> {
             if remain > count as i32 {
                 remain = count as i32;
             }
-            let mut chan_idx = 0;
-            while chan_idx < self.src.num_channels {
+            for chan in &mut self.channels {
                 resample(
-                    &mut self.channels[chan_idx as usize],
+                    chan,
                     output_buffer,
                     offset as usize,
                     remain as usize,
                     &self.src.instruments,
-                );
-                chan_idx += 1;
+                )
             }
             self.playback.tick_offset += remain;
             if self.playback.tick_offset == self.playback.tick_len {
@@ -785,10 +778,8 @@ impl MmC2r<'_> {
     /// Mute a channel.
     pub fn mute_channel(&mut self, channel: i32) -> i32 {
         if channel < 0 {
-            let mut chan_idx = 0;
-            while chan_idx < self.src.num_channels {
-                self.channels[chan_idx as usize].mute = 0;
-                chan_idx += 1;
+            for chan in &mut self.channels {
+                chan.mute = 0;
             }
         } else if channel < self.src.num_channels {
             self.channels[channel as usize].mute = 1;
@@ -816,14 +807,12 @@ fn micromod_set_position(mut pos: i32, mm: &mut MmC2r) {
     mm.playback.pl_channel = -1;
     mm.playback.pl_count = mm.playback.pl_channel;
     mm.playback.random_seed = 0xabcdef;
-    let mut chan_idx = 0;
-    while chan_idx < mm.src.num_channels {
-        let chan = &mut mm.channels[chan_idx as usize];
-        chan.id = chan_idx as u8;
+    for (i, chan) in mm.channels.iter_mut().enumerate() {
+        chan.id = i as u8;
         chan.assigned = 0;
         chan.instrument = 0;
         chan.volume = 0;
-        match chan_idx & 0x3 {
+        match i & 0x3 {
             0 | 3 => {
                 chan.panning = 0;
             }
@@ -832,7 +821,6 @@ fn micromod_set_position(mut pos: i32, mm: &mut MmC2r) {
             }
             _ => {}
         }
-        chan_idx += 1;
     }
     sequence_tick(mm);
     mm.playback.tick_offset = 0;
