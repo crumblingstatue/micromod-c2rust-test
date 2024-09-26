@@ -155,8 +155,8 @@ fn update_frequency(chan: &mut Channel, sample_rate: i32, gain: i32, c2_rate: i3
     if period < 14 {
         period = 6848;
     }
-    let freq = (c2_rate * 428 / period) as u64;
-    chan.step = (freq << 14).wrapping_div(sample_rate as u64) as usize;
+    let freq = (c2_rate * 428 / period) as u32;
+    chan.step = (freq << 14).wrapping_div(sample_rate as u32) as usize;
     let mut volume = i32::from(chan.volume) + i32::from(chan.tremolo_add);
     volume = volume.clamp(0, 64);
     chan.ampl = ((volume * gain) >> 5) as u8;
@@ -702,7 +702,7 @@ impl MmC2r<'_> {
         // First instrument is an unused dummy instrument
         mm.src.instruments.push(Instrument::dummy());
         while inst_idx < 32 {
-            let sample_length = u64::from(
+            let sample_length = u32::from(
                 bytemuck::cast_slice(mm.src.module_data)
                     .read_u16_be(inst_idx * 30 + 12)
                     .unwrap(),
@@ -712,12 +712,12 @@ impl MmC2r<'_> {
             let volume = i32::from(mm.src.module_data[inst_idx * 30 + 15]) & 0x7f;
             let volume = (if volume > 64 { 64 } else { volume }) as u8;
 
-            let mut loop_start = u64::from(
+            let mut loop_start = u32::from(
                 bytemuck::cast_slice(mm.src.module_data)
                     .read_u16_be(inst_idx * 30 + 16)
                     .unwrap(),
             ) * 2;
-            let mut loop_length = u64::from(
+            let mut loop_length = u32::from(
                 bytemuck::cast_slice(mm.src.module_data)
                     .read_u16_be(inst_idx * 30 + 18)
                     .unwrap(),
