@@ -5,6 +5,8 @@
 
 #![warn(missing_docs)]
 
+use std::cmp::Ordering;
+
 #[derive(Copy, Clone, Default)]
 struct Channel {
     pub note: Note,
@@ -188,15 +190,19 @@ fn tone_portamento(chan: &mut Channel) {
 
     source = chan.period as i64;
     let dest = chan.porta_period as i64;
-    if source < dest {
-        source += chan.porta_speed as i64;
-        if source > dest {
-            source = dest;
+    match source.cmp(&dest) {
+        Ordering::Less => {
+            source += chan.porta_speed as i64;
+            if source > dest {
+                source = dest;
+            }
         }
-    } else if source > dest {
-        source -= chan.porta_speed as i64;
-        if source < dest {
-            source = dest;
+        Ordering::Equal => { /* Do absolutely nothing */ }
+        Ordering::Greater => {
+            source -= chan.porta_speed as i64;
+            if source < dest {
+                source = dest;
+            }
         }
     }
     chan.period = source as u16;
