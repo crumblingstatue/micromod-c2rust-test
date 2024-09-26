@@ -763,8 +763,10 @@ impl MmC2r<'_> {
     }
     /// Calculate the song duration... Okay.
     pub fn calculate_song_duration(&mut self) -> i32 {
-        let mut duration = 0;
-        if self.src.num_channels > 0 {
+        if self.channels.is_empty() {
+            0
+        } else {
+            let mut duration = 0;
             micromod_set_position(0, self);
             let mut song_end = false;
             while !song_end {
@@ -772,8 +774,8 @@ impl MmC2r<'_> {
                 song_end = sequence_tick(self);
             }
             micromod_set_position(0, self);
+            duration
         }
-        duration
     }
     /// Mute a channel.
     pub fn mute_channel(&mut self, idx: usize) {
