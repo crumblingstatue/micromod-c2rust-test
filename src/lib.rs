@@ -187,27 +187,27 @@ fn volume_slide(chan: &mut Channel, param: i32) {
     chan.volume = volume as u8;
 }
 fn waveform(phase: i16, type_: u8, random_seed: &mut i32) -> i16 {
-    let mut amplitude: i32 = 0;
+    let mut amplitude: i16 = 0;
     match type_ & 0x3 {
         0 => {
-            amplitude = i32::from(consts::SINE_TABLE[(phase & 0x1f) as usize]);
+            amplitude = i16::from(consts::SINE_TABLE[(phase & 0x1f) as usize]);
             if phase & 0x20 > 0 {
                 amplitude = -amplitude;
             }
         }
         1 => {
-            amplitude = 255 - (((i32::from(phase) + 0x20) & 0x3f) << 3);
+            amplitude = 255 - (((phase + 0x20) & 0x3f) << 3);
         }
         2 => {
-            amplitude = 255 - ((i32::from(phase) & 0x20) << 4);
+            amplitude = 255 - ((phase & 0x20) << 4);
         }
         3 => {
-            amplitude = (*random_seed >> 20) - 255;
+            amplitude = (*random_seed as i16 >> 10) - 255;
             *random_seed = (*random_seed * 65 + 17) & 0x1fffffff;
         }
         _ => {}
     }
-    amplitude as i16
+    amplitude
 }
 fn vibrato(chan: &mut Channel, random_seed: &mut i32) {
     chan.vibrato_add = ((waveform(
