@@ -571,12 +571,12 @@ fn sequence_tick(mm: &mut MmC2r) -> bool {
 fn resample(
     chan: &mut Channel,
     buf: &mut [i16],
-    offset: i64,
-    count: i64,
+    offset: usize,
+    count: usize,
     instruments: &[Instrument],
 ) {
-    let mut buf_idx: usize = (offset << 1) as usize;
-    let buf_end: usize = ((offset + count) << 1) as usize;
+    let mut buf_idx: usize = offset << 1;
+    let buf_end: usize = (offset + count) << 1;
     let mut sidx: usize = chan.sample_idx;
     let step: usize = chan.step;
     let llen = instruments[chan.instrument as usize].loop_length;
@@ -750,8 +750,8 @@ impl MmC2r<'_> {
                 resample(
                     &mut self.channels[chan_idx as usize],
                     output_buffer,
-                    offset,
-                    remain,
+                    offset as usize,
+                    remain as usize,
                     &self.src.instruments,
                 );
                 chan_idx += 1;
