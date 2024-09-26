@@ -3,7 +3,12 @@
 //!
 //! Safetyfication done manually
 
-#![warn(missing_docs, clippy::cast_lossless)]
+#![warn(
+    missing_docs,
+    clippy::cast_lossless,
+    clippy::missing_const_for_fn,
+    clippy::needless_pass_by_ref_mut
+)]
 
 mod consts;
 
@@ -57,7 +62,7 @@ struct Instrument<'src> {
 }
 
 impl Instrument<'_> {
-    fn dummy() -> Self {
+    const fn dummy() -> Self {
         Self {
             volume: 0,
             fine_tune: 0,
@@ -148,7 +153,7 @@ fn unsigned_short_big_endian(buf: &[i8], offset: i64) -> i64 {
 fn set_tempo(tempo: i64, tick_len: &mut i64, sample_rate: i64) {
     *tick_len = ((sample_rate << 1) + (sample_rate >> 1)) / tempo;
 }
-fn update_frequency(chan: &mut Channel, sample_rate: i64, gain: &mut i64, c2_rate: &mut i64) {
+fn update_frequency(chan: &mut Channel, sample_rate: i64, gain: i64, c2_rate: i64) {
     let mut period;
     let mut volume;
 
@@ -158,11 +163,11 @@ fn update_frequency(chan: &mut Channel, sample_rate: i64, gain: &mut i64, c2_rat
     if period < 14 {
         period = 6848;
     }
-    let freq = (*c2_rate * 428 / period) as u64;
+    let freq = (c2_rate * 428 / period) as u64;
     chan.step = (freq << 14).wrapping_div(sample_rate as u64);
     volume = i64::from(i32::from(chan.volume) + i32::from(chan.tremolo_add));
     volume = volume.clamp(0, 64);
-    chan.ampl = ((volume * *gain) >> 5) as u8;
+    chan.ampl = ((volume * gain) >> 5) as u8;
 }
 fn tone_portamento(chan: &mut Channel) {
     let mut source;
@@ -403,13 +408,13 @@ fn channel_row(chan: &mut Channel, sample_rate: i64, src: &ModSrc, playback: &mu
         }
         _ => {}
     }
-    update_frequency(chan, sample_rate, &mut playback.gain, &mut playback.c2_rate);
+    update_frequency(chan, sample_rate, playback.gain, playback.c2_rate);
 }
 fn channel_tick(
     chan: &mut Channel,
     sample_rate: i64,
-    gain: &mut i64,
-    c2_rate: &mut i64,
+    gain: i64,
+    c2_rate: i64,
     random_seed: &mut i64,
     instruments: &[Instrument],
 ) {
@@ -571,8 +576,8 @@ fn sequence_tick(state: &mut MmC2r) -> bool {
             channel_tick(
                 &mut state.channels[chan_idx as usize],
                 state.sample_rate,
-                &mut state.playback.gain,
-                &mut state.playback.c2_rate,
+                state.playback.gain,
+                state.playback.c2_rate,
                 &mut state.playback.random_seed,
                 &state.src.instruments,
             );
