@@ -1,5 +1,5 @@
 use crate::{
-    resample, sequence_tick,
+    channel_row, channel_tick, resample,
     slice_ext::ByteSliceExt as _,
     types::{Channel, Instrument, ModSrc, PlaybackState},
 };
@@ -119,7 +119,7 @@ impl Engine<'_> {
             }
             self.playback.tick_offset += remain;
             if self.playback.tick_offset == self.playback.tick_len {
-                if sequence_tick(self) {
+                if self.sequence_tick() {
                     cnt = false;
                 }
                 self.playback.tick_offset = 0;
@@ -162,7 +162,7 @@ impl Engine<'_> {
             let mut song_end = false;
             while !song_end {
                 duration += self.playback.tick_len;
-                song_end = sequence_tick(self);
+                song_end = self.sequence_tick();
             }
             self.set_position(0);
             duration
@@ -214,8 +214,86 @@ impl Engine<'_> {
                 _ => {}
             }
         }
-        sequence_tick(self);
+        self.sequence_tick();
         self.playback.tick_offset = 0;
+    }
+    fn sequence_row(&mut self) -> bool {
+        let Self {
+            sample_rate,
+            channels,
+            src,
+            playback,
+        } = self;
+        let mut song_end = false;
+        if playback.next_row < 0 {
+            playback.break_pattern = playback.pattern + 1;
+            playback.next_row = 0;
+        }
+        if playback.break_pattern >= 0 {
+            if playback.break_pattern >= src.song_length {
+                playback.next_row = 0;
+                playback.break_pattern = playback.next_row;
+            }
+            if playback.break_pattern <= playback.pattern {
+                song_end = true;
+            }
+            playback.pattern = playback.break_pattern;
+            for chan in &mut *channels {
+                chan.pl_row = 0
+            }
+            playback.break_pattern = -1;
+        }
+        playback.row = playback.next_row;
+        playback.next_row = playback.row + 1;
+        if playback.next_row >= 64 {
+            playback.next_row = -1;
+        }
+        let mut pat_offset = ((i32::from(src.sequence[playback.pattern as usize]) * 64)
+            + playback.row)
+            * src.num_channels
+            * 4;
+        for chan in channels {
+            let note = &mut chan.note;
+            let pattern_data = src.pattern_data;
+            note.key = (u16::from(pattern_data[pat_offset as usize]) & 0xf) << 8;
+            note.key |= u16::from(pattern_data[(pat_offset + 1) as usize]);
+            note.instrument = (pattern_data[(pat_offset + 2) as usize]) >> 4;
+            note.instrument |= pattern_data[pat_offset as usize] & 0x10;
+            let mut effect = pattern_data[(pat_offset + 2) as usize] & 0xf;
+            let mut param = pattern_data[(pat_offset + 3) as usize];
+            pat_offset += 4;
+            if effect == 0xe {
+                effect = 0x10 | param >> 4;
+                param &= 0xf;
+            }
+            if effect == 0 && param > 0 {
+                effect = 0xe;
+            }
+            note.effect = effect;
+            note.param = param;
+            channel_row(chan, *sample_rate, src, playback);
+        }
+        song_end
+    }
+    fn sequence_tick(&mut self) -> bool {
+        let mut song_end = false;
+        self.playback.tick -= 1;
+        if self.playback.tick <= 0 {
+            self.playback.tick = self.playback.speed;
+            song_end = self.sequence_row();
+        } else {
+            for chan in &mut self.channels {
+                channel_tick(
+                    chan,
+                    self.sample_rate,
+                    self.playback.gain,
+                    self.playback.c2_rate,
+                    &mut self.playback.random_seed,
+                    &self.src.instruments,
+                );
+            }
+        }
+        song_end
     }
 }
 
