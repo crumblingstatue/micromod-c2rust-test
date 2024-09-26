@@ -419,8 +419,7 @@ fn channel_tick(
     let period;
     let effect = i64::from(chan.note.effect);
     let param = i64::from(chan.note.param);
-    let fresh3 = &mut chan.fx_count;
-    *fresh3 = (*fresh3).wrapping_add(1);
+    chan.fx_count = chan.fx_count.wrapping_add(1);
     match effect {
         1 => {
             period = i64::from(chan.period) - param;
@@ -434,8 +433,8 @@ fn channel_tick(
             tone_portamento(chan);
         }
         4 => {
-            let fresh4 = &mut chan.vibrato_phase;
-            *fresh4 = (i32::from(*fresh4) + i32::from(chan.vibrato_speed)) as u8;
+            chan.vibrato_phase =
+                (i32::from(chan.vibrato_phase) + i32::from(chan.vibrato_speed)) as u8;
             vibrato(chan, random_seed);
         }
         5 => {
@@ -443,14 +442,14 @@ fn channel_tick(
             volume_slide(chan, param);
         }
         6 => {
-            let fresh5 = &mut chan.vibrato_phase;
-            *fresh5 = (i32::from(*fresh5) + i32::from(chan.vibrato_speed)) as u8;
+            chan.vibrato_phase =
+                (i32::from(chan.vibrato_phase) + i32::from(chan.vibrato_speed)) as u8;
             vibrato(chan, random_seed);
             volume_slide(chan, param);
         }
         7 => {
-            let fresh6 = &mut chan.tremolo_phase;
-            *fresh6 = (i32::from(*fresh6) + i32::from(chan.tremolo_speed)) as u8;
+            chan.tremolo_phase =
+                (i32::from(chan.tremolo_phase) + i32::from(chan.tremolo_speed)) as u8;
             tremolo(chan, random_seed);
         }
         10 => {
@@ -540,12 +539,12 @@ fn sequence_row(
         note = &mut (channels[chan_idx as usize]).note;
         let pattern_data = src.pattern_data;
         note.key = ((i32::from(pattern_data[pat_offset as usize]) & 0xf_i32) << 8) as u16;
-        let fresh7 = &mut note.key;
-        *fresh7 = (i32::from(*fresh7) | i32::from(pattern_data[(pat_offset + 1) as usize])) as u16;
+        note.key =
+            (i32::from(note.key) | i32::from(pattern_data[(pat_offset + 1) as usize])) as u16;
         note.instrument = (i32::from(pattern_data[(pat_offset + 2) as usize]) >> 4) as u8;
-        let fresh8 = &mut note.instrument;
-        *fresh8 =
-            (i32::from(*fresh8) | i32::from(pattern_data[pat_offset as usize]) & 0x10_i32) as u8;
+        note.instrument = (i32::from(note.instrument)
+            | i32::from(pattern_data[pat_offset as usize]) & 0x10_i32)
+            as u8;
         effect = i64::from(i32::from(pattern_data[(pat_offset + 2) as usize]) & 0xf_i32);
         param = i64::from(pattern_data[(pat_offset + 3) as usize]);
         pat_offset += 4;
@@ -876,9 +875,8 @@ fn micromod_set_position(mut pos: i64, state: &mut MmC2r) {
     while chan_idx < state.src.num_channels {
         chan = &mut state.channels[chan_idx as usize];
         chan.id = chan_idx as u8;
-        let fresh15 = &mut chan.assigned;
-        *fresh15 = 0;
-        chan.instrument = *fresh15;
+        chan.assigned = 0;
+        chan.instrument = 0;
         chan.volume = 0;
         match chan_idx & 0x3 {
             0 | 3 => {
