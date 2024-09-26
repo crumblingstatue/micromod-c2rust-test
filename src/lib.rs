@@ -76,6 +76,14 @@ static SINE_TABLE: [u8; 32] = [
     235, 224, 212, 197, 180, 161, 141, 120, 97, 74, 49, 24,
 ];
 
+/// Immutable source data of the module
+struct ModSrc<'src> {
+    instruments: Vec<Instrument<'src>>,
+    module_data: &'src [i8],
+    pattern_data: &'src [u8],
+    sequence: &'src [u8],
+}
+
 /// A micromod decoding instance thingy.
 pub struct MmC2r<'src> {
     sample_rate: i64,
@@ -93,13 +101,10 @@ pub struct MmC2r<'src> {
     pl_channel: i64,
     random_seed: i64,
     channels: [Channel; 16],
-    instruments: Vec<Instrument<'src>>,
-    module_data: &'src [i8],
-    pattern_data: &'src [u8],
-    sequence: &'src [u8],
     song_length: i64,
     num_patterns: i64,
     num_channels: i64,
+    src: ModSrc<'src>,
 }
 
 fn calculate_num_patterns(module_header: &[i8]) -> i64 {
@@ -544,13 +549,13 @@ fn sequence_row(state: &mut MmC2r) -> bool {
     if state.next_row >= 64 {
         state.next_row = -1;
     }
-    pat_offset = ((state.sequence[state.pattern as usize] as i32 * 64) as i64 + state.row)
+    pat_offset = ((state.src.sequence[state.pattern as usize] as i32 * 64) as i64 + state.row)
         * state.num_channels
         * 4;
     chan_idx = 0;
     while chan_idx < state.num_channels {
         note = &mut (state.channels[chan_idx as usize]).note;
-        let pattern_data = state.pattern_data;
+        let pattern_data = state.src.pattern_data;
         note.key = ((pattern_data[pat_offset as usize] as i32 & 0xf_i32) << 8) as u16;
         let fresh7 = &mut note.key;
         *fresh7 = (*fresh7 as i32 | pattern_data[(pat_offset + 1) as usize] as i32) as u16;
@@ -584,7 +589,7 @@ fn sequence_row(state: &mut MmC2r) -> bool {
             &mut state.pl_count,
             &mut state.pl_channel,
             &mut state.random_seed,
-            &state.instruments,
+            &state.src.instruments,
             &mut state.num_channels,
         );
         chan_idx += 1;
@@ -607,7 +612,7 @@ fn sequence_tick(state: &mut MmC2r) -> bool {
                 &mut state.gain,
                 &mut state.c2_rate,
                 &mut state.random_seed,
-                &state.instruments,
+                &state.src.instruments,
             );
             chan_idx += 1;
         }
@@ -725,32 +730,34 @@ impl MmC2r<'_> {
             pl_channel: Default::default(),
             random_seed: Default::default(),
             channels: Default::default(),
-            instruments: Default::default(),
-            module_data: bytemuck::cast_slice(data),
-            pattern_data,
-            sequence,
+            src: ModSrc {
+                instruments: Vec::new(),
+                module_data: bytemuck::cast_slice(data),
+                pattern_data,
+                sequence,
+            },
             song_length,
             num_patterns: Default::default(),
             num_channels,
         };
-        state.num_patterns = calculate_num_patterns(state.module_data);
+        state.num_patterns = calculate_num_patterns(state.src.module_data);
         let mut sample_data_offset = 1084 + state.num_patterns * 64 * state.num_channels * 4;
         let mut inst_idx = 1;
         // First instrument is an unused dummy instrument
-        state.instruments.push(Instrument::dummy());
+        state.src.instruments.push(Instrument::dummy());
         while inst_idx < 32 {
             let sample_length =
-                unsigned_short_big_endian(state.module_data, inst_idx * 30 + 12) * 2;
+                unsigned_short_big_endian(state.src.module_data, inst_idx * 30 + 12) * 2;
             let fine_tune =
-                (state.module_data[(inst_idx * 30 + 14) as usize] as i32 & 0xf_i32) as i64;
+                (state.src.module_data[(inst_idx * 30 + 14) as usize] as i32 & 0xf_i32) as i64;
             let fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
             let volume =
-                (state.module_data[(inst_idx * 30 + 15) as usize] as i32 & 0x7f_i32) as i64;
+                (state.src.module_data[(inst_idx * 30 + 15) as usize] as i32 & 0x7f_i32) as i64;
             let volume = (if volume > 64 { 64 } else { volume }) as u8;
             let mut loop_start =
-                unsigned_short_big_endian(state.module_data, inst_idx * 30 + 16) * 2;
+                unsigned_short_big_endian(state.src.module_data, inst_idx * 30 + 16) * 2;
             let mut loop_length =
-                unsigned_short_big_endian(state.module_data, inst_idx * 30 + 18) * 2;
+                unsigned_short_big_endian(state.src.module_data, inst_idx * 30 + 18) * 2;
             if loop_start + loop_length > sample_length {
                 if loop_start / 2 + loop_length <= sample_length {
                     loop_start /= 2;
@@ -767,7 +774,7 @@ impl MmC2r<'_> {
             let sample_data = &bytemuck::cast_slice::<u8, i8>(data)[sample_data_offset as usize..];
             sample_data_offset += sample_length;
             inst_idx += 1;
-            state.instruments.push(Instrument {
+            state.src.instruments.push(Instrument {
                 volume,
                 fine_tune,
                 loop_start,
@@ -803,7 +810,7 @@ impl MmC2r<'_> {
                     output_buffer,
                     offset,
                     remain,
-                    &self.instruments,
+                    &self.src.instruments,
                 );
                 chan_idx += 1;
             }
@@ -821,7 +828,7 @@ impl MmC2r<'_> {
     }
     /// Calculate the length of the module file... In samples. Presumably.
     pub fn calculate_mod_file_len(&self) -> i64 {
-        let module_header = self.module_data;
+        let module_header = self.src.module_data;
         let mut length;
 
         let mut inst_idx;
