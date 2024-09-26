@@ -119,43 +119,24 @@ fn calculate_num_patterns(module_header: &[i8]) -> i64 {
     }
     num_patterns_0
 }
-fn calculate_num_channels(module_header: &[i8]) -> i64 {
-    let mut numchan: i64 = 0;
-    let mut current_block_3: u64;
-    match (module_header[1082] as i32) << 8 | module_header[1083] as i32 {
-        19233 => {
-            current_block_3 = 4379976358253192308;
-        }
-        21550 => {
-            current_block_3 = 4379976358253192308;
-        }
-        19246 | 21556 => {
-            current_block_3 = 5412093109544641453;
-        }
-        18510 => {
-            numchan = (module_header[1080] as i32 - 48) as i64;
-            current_block_3 = 3276175668257526147;
-        }
-        17224 => {
-            numchan =
-                ((module_header[1080] as i32 - 48) * 10 + (module_header[1081] as i32 - 48)) as i64;
-            current_block_3 = 3276175668257526147;
-        }
-        _ => {
-            numchan = 0;
-            current_block_3 = 3276175668257526147;
-        }
+
+fn calculate_num_channels(module_header: &[i8]) -> Option<i64> {
+    const MAX_CHANNELS: i64 = 16;
+    let numchan: i64 = match ((module_header[1082] as i64) << 8) | module_header[1083] as i64 {
+        // M.K.  M!K!     N.T.     FLT4
+        0x4b2e | 0x4b21 | 0x542e | 0x5434 => 4,
+        // xCHN
+        0x484e => (module_header[1080] - 48) as i64,
+        // xxCH
+        0x4348 => (((module_header[1080] - 48) * 10) + (module_header[1081] - 48)) as i64,
+        // Not recognised.
+        _ => 0,
+    };
+    if numchan > MAX_CHANNELS {
+        None
+    } else {
+        Some(numchan)
     }
-    if current_block_3 == 4379976358253192308 {
-        current_block_3 = 5412093109544641453;
-    }
-    if current_block_3 == 5412093109544641453 {
-        numchan = 4;
-    }
-    if numchan > 16 {
-        numchan = 0;
-    }
-    numchan
 }
 fn unsigned_short_big_endian(buf: &[i8], offset: i64) -> i64 {
     ((buf[offset as usize] as i32 & 0xff_i32) << 8 | buf[(offset + 1) as usize] as i32 & 0xff_i32)
@@ -677,10 +658,10 @@ pub enum InitError {
 impl MmC2r<'_> {
     /// Create a new micromod decoder apparatus.
     pub fn new(data: &[u8], sample_rate: i64) -> Result<MmC2r, InitError> {
-        let num_channels = calculate_num_channels(bytemuck::cast_slice(data));
-        if num_channels <= 0 {
-            return Err(InitError::ChannelNumIncorrect);
-        }
+        let num_channels = match calculate_num_channels(bytemuck::cast_slice(data)) {
+            Some(num_channels) => num_channels,
+            None => return Err(InitError::ChannelNumIncorrect),
+        };
         if sample_rate < 8000 {
             return Err(InitError::SamplingRateIncorrect);
         }
@@ -793,22 +774,19 @@ impl MmC2r<'_> {
         cnt
     }
     /// Calculate the length of the module file... In samples. Presumably.
-    pub fn calculate_mod_file_len(&self) -> i64 {
+    pub fn calculate_mod_file_len(&self) -> Option<i64> {
         let module_header = self.src.module_data;
         let mut length;
 
         let mut inst_idx;
-        let numchan = calculate_num_channels(module_header);
-        if numchan <= 0 {
-            return -1;
-        }
+        let numchan = calculate_num_channels(module_header)?;
         length = 1084 + 4 * numchan * 64 * calculate_num_patterns(module_header);
         inst_idx = 1;
         while inst_idx < 32 {
             length += unsigned_short_big_endian(module_header, inst_idx * 30 + 12) * 2;
             inst_idx += 1;
         }
-        length
+        Some(length)
     }
     /// Calculate the song duration... Okay.
     pub fn calculate_song_duration(&mut self) -> i64 {
