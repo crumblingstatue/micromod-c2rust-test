@@ -735,20 +735,17 @@ impl MmC2r<'_> {
     }
     /// Fill a buffer with delicious samples
     pub fn get_audio(&mut self, output_buffer: &mut [i16], mut count: i64) -> bool {
-        let mut offset;
-        let mut remain;
-        let mut chan_idx;
         if self.src.num_channels <= 0 {
             return false;
         }
-        offset = 0;
+        let mut offset = 0;
         let mut cnt = true;
         while count > 0 {
-            remain = self.playback.tick_len - self.playback.tick_offset;
+            let mut remain = self.playback.tick_len - self.playback.tick_offset;
             if remain > count {
                 remain = count;
             }
-            chan_idx = 0;
+            let mut chan_idx = 0;
             while chan_idx < self.src.num_channels {
                 resample(
                     &mut self.channels[chan_idx as usize],
