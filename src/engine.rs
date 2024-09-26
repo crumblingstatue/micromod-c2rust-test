@@ -29,7 +29,6 @@ impl Engine<'_> {
             channels: vec![Channel::default(); num_channels as usize],
             src: ModSrc {
                 instruments: Vec::new(),
-                module_data: bytemuck::cast_slice(data),
                 pattern_data,
                 sequence,
                 num_patterns: Default::default(),
@@ -43,11 +42,12 @@ impl Engine<'_> {
         let mut inst_idx = 1;
         // First instrument is an unused dummy instrument
         mm.src.instruments.push(Instrument::dummy());
+        let mod_data: &[i8] = bytemuck::cast_slice(data);
         while inst_idx < 32 {
             let sample_length = u32::from(data.read_u16_be(inst_idx * 30 + 12).unwrap()) * 2;
-            let fine_tune = i32::from(mm.src.module_data[inst_idx * 30 + 14]) & 0xf;
+            let fine_tune = i32::from(mod_data[inst_idx * 30 + 14]) & 0xf;
             let fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
-            let volume = i32::from(mm.src.module_data[inst_idx * 30 + 15]) & 0x7f;
+            let volume = i32::from(mod_data[inst_idx * 30 + 15]) & 0x7f;
             let volume = (if volume > 64 { 64 } else { volume }) as u8;
 
             let mut loop_start = u32::from(data.read_u16_be(inst_idx * 30 + 16).unwrap()) * 2;
@@ -66,7 +66,7 @@ impl Engine<'_> {
             }
             let loop_start = loop_start << 14;
             let loop_length = loop_length << 14;
-            let sample_data = &mm.src.module_data[sample_data_offset as usize..];
+            let sample_data = &mod_data[sample_data_offset as usize..];
             sample_data_offset += sample_length as i32;
             inst_idx += 1;
             mm.src.instruments.push(Instrument {
@@ -115,29 +115,6 @@ impl Engine<'_> {
             count -= remain as usize;
         }
         cnt
-    }
-    /// Calculate the length of the module file... In samples. Presumably.
-    pub fn calculate_mod_file_len(&self) -> Option<u32> {
-        let header = self.src.module_data;
-        let numchan = u32::from(crate::parse::calculate_num_channels(bytemuck::cast_slice(
-            header,
-        ))?);
-        let mut length = 1084
-            + 4 * numchan
-                * 64
-                * u32::from(crate::parse::calculate_num_patterns(bytemuck::cast_slice(
-                    header,
-                )));
-        let mut inst_idx = 1;
-        while inst_idx < 32 {
-            length += u32::from(
-                bytemuck::cast_slice(header)
-                    .read_u16_be(inst_idx * 30 + 12)
-                    .unwrap(),
-            ) * 2;
-            inst_idx += 1;
-        }
-        Some(length)
     }
     /// Calculate the song duration... Okay.
     pub fn calculate_song_duration(&mut self) -> i32 {

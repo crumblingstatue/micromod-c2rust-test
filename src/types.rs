@@ -60,7 +60,6 @@ impl Instrument<'_> {
 /// Immutable source data of the module
 pub(crate) struct ModSrc<'src> {
     pub(crate) instruments: Vec<Instrument<'src>>,
-    pub(crate) module_data: &'src [i8],
     pub(crate) pattern_data: &'src [u8],
     pub(crate) sequence: &'src [u8],
     pub(crate) num_patterns: i32,
