@@ -37,25 +37,26 @@ pub struct Note {
     pub param: u8,
 }
 #[derive(Copy, Clone)]
-pub struct Instrument {
+pub struct Instrument<'src> {
     pub volume: u8,
     pub fine_tune: u8,
     pub loop_start: u64,
     pub loop_length: u64,
-    pub sample_data: *const i8,
+    pub sample_data: &'src [i8],
 }
 
-impl Default for Instrument {
-    fn default() -> Self {
+impl Instrument<'_> {
+    pub fn dummy() -> Self {
         Self {
-            volume: Default::default(),
-            fine_tune: Default::default(),
-            loop_start: Default::default(),
-            loop_length: Default::default(),
-            sample_data: std::ptr::null(),
+            volume: 0,
+            fine_tune: 0,
+            loop_start: 0,
+            loop_length: 0,
+            sample_data: &[],
         }
     }
 }
+
 static MICROMOD_VERSION: &str = "Micromod Protracker replay 20180625 (c)mumart@gmail.com";
 static FINE_TUNING: [u16; 16] = [
     4340, 4308, 4277, 4247, 4216, 4186, 4156, 4126, 4096, 4067, 4037, 4008, 3979, 3951, 3922, 3894,
@@ -84,7 +85,7 @@ pub struct State<'src> {
     pl_channel: i64,
     random_seed: i64,
     channels: [Channel; 16],
-    instruments: Vec<Instrument>,
+    instruments: Vec<Instrument<'src>>,
     module_data: &'src [i8],
     pattern_data: &'src [u8],
     sequence: &'src [u8],
@@ -631,7 +632,7 @@ unsafe fn resample(
     let step: u64 = chan.step;
     let llen: u64 = instruments[chan.instrument as usize].loop_length;
     let lep1: u64 = (instruments[chan.instrument as usize].loop_start).wrapping_add(llen);
-    let sdat: *const i8 = instruments[chan.instrument as usize].sample_data;
+    let sdat: *const i8 = instruments[chan.instrument as usize].sample_data.as_ptr();
     let mut ampl: i16 = (if chan.mute == 0 { chan.ampl as i32 } else { 0 }) as i16;
     let lamp: i16 = ((ampl as i32 * (127_i32 - chan.panning as i32)) >> 5) as i16;
     let ramp: i16 = ((ampl as i32 * chan.panning as i32) >> 5) as i16;
@@ -715,13 +716,6 @@ pub enum InitError {
 
 impl State<'_> {
     pub unsafe fn init(data: &[u8], sample_rate: i64) -> Result<State, InitError> {
-        let mut sample_data_offset;
-        let mut inst_idx;
-        let mut sample_length;
-        let mut volume;
-        let mut fine_tune;
-        let mut loop_start;
-        let mut loop_length;
         let num_channels = calculate_num_channels(bytemuck::cast_slice(data));
         if num_channels <= 0 {
             return Err(InitError::ChannelNumIncorrect);
@@ -756,19 +750,23 @@ impl State<'_> {
             num_channels,
         };
         state.num_patterns = calculate_num_patterns(state.module_data);
-        sample_data_offset = 1084 + state.num_patterns * 64 * state.num_channels * 4;
-        inst_idx = 1;
+        let mut sample_data_offset = 1084 + state.num_patterns * 64 * state.num_channels * 4;
+        let mut inst_idx = 1;
         // First instrument is an unused dummy instrument
-        state.instruments.push(Instrument::default());
+        state.instruments.push(Instrument::dummy());
         while inst_idx < 32 {
-            let mut inst = Instrument::default();
-            sample_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 12) * 2;
-            fine_tune = (state.module_data[(inst_idx * 30 + 14) as usize] as i32 & 0xf_i32) as i64;
-            inst.fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
-            volume = (state.module_data[(inst_idx * 30 + 15) as usize] as i32 & 0x7f_i32) as i64;
-            inst.volume = (if volume > 64 { 64 } else { volume }) as u8;
-            loop_start = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 16) * 2;
-            loop_length = unsigned_short_big_endian(state.module_data, inst_idx * 30 + 18) * 2;
+            let sample_length =
+                unsigned_short_big_endian(state.module_data, inst_idx * 30 + 12) * 2;
+            let fine_tune =
+                (state.module_data[(inst_idx * 30 + 14) as usize] as i32 & 0xf_i32) as i64;
+            let fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
+            let volume =
+                (state.module_data[(inst_idx * 30 + 15) as usize] as i32 & 0x7f_i32) as i64;
+            let volume = (if volume > 64 { 64 } else { volume }) as u8;
+            let mut loop_start =
+                unsigned_short_big_endian(state.module_data, inst_idx * 30 + 16) * 2;
+            let mut loop_length =
+                unsigned_short_big_endian(state.module_data, inst_idx * 30 + 18) * 2;
             if loop_start + loop_length > sample_length {
                 if loop_start / 2 + loop_length <= sample_length {
                     loop_start /= 2;
@@ -780,15 +778,18 @@ impl State<'_> {
                 loop_start = sample_length;
                 loop_length = 0;
             }
-            inst.loop_start = (loop_start << 14) as u64;
-            inst.loop_length = (loop_length << 14) as u64;
-            inst.sample_data = state
-                .module_data
-                .as_ptr()
-                .offset(sample_data_offset as isize);
+            let loop_start = (loop_start << 14) as u64;
+            let loop_length = (loop_length << 14) as u64;
+            let sample_data = &bytemuck::cast_slice::<u8, i8>(data)[sample_data_offset as usize..];
             sample_data_offset += sample_length;
             inst_idx += 1;
-            state.instruments.push(inst);
+            state.instruments.push(Instrument {
+                volume,
+                fine_tune,
+                loop_start,
+                loop_length,
+                sample_data,
+            });
         }
         state.c2_rate = (if state.num_channels > 4 { 8363 } else { 8287 }) as i64;
         state.gain = (if state.num_channels > 4 { 32 } else { 64 }) as i64;
