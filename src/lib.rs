@@ -705,13 +705,13 @@ impl MmC2r<'_> {
         }
         mm.playback.c2_rate = if mm.src.num_channels > 4 { 8363 } else { 8287 };
         mm.playback.gain = if mm.src.num_channels > 4 { 32 } else { 64 };
-        mm.mute_channel(-1);
+        mm.unmute_all();
         micromod_set_position(0, &mut mm);
         Ok(mm)
     }
     /// Fill a buffer with delicious samples
     pub fn get_audio(&mut self, output_buffer: &mut [i16], mut count: usize) -> bool {
-        if self.src.num_channels <= 0 {
+        if self.channels.is_empty() {
             return false;
         }
         let mut offset = 0;
@@ -776,15 +776,16 @@ impl MmC2r<'_> {
         duration
     }
     /// Mute a channel.
-    pub fn mute_channel(&mut self, channel: i32) -> i32 {
-        if channel < 0 {
-            for chan in &mut self.channels {
-                chan.mute = 0;
-            }
-        } else if channel < self.src.num_channels {
-            self.channels[channel as usize].mute = 1;
+    pub fn mute_channel(&mut self, idx: usize) {
+        if let Some(chan) = self.channels.get_mut(idx) {
+            chan.mute = 1;
         }
-        self.src.num_channels
+    }
+    /// Unmute all channels
+    pub fn unmute_all(&mut self) {
+        for chan in &mut self.channels {
+            chan.mute = 0;
+        }
     }
     /// Set some gainz.
     pub fn set_gain(&mut self, value: i32) {
@@ -793,7 +794,7 @@ impl MmC2r<'_> {
 }
 
 fn micromod_set_position(mut pos: i32, mm: &mut MmC2r) {
-    if mm.src.num_channels <= 0 {
+    if mm.channels.is_empty() {
         return;
     }
     if pos >= mm.src.song_length {
