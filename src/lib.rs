@@ -144,7 +144,7 @@ fn calculate_num_channels(module_header: &[u8]) -> Option<i64> {
         Some(numchan)
     }
 }
-fn unsigned_short_big_endian(buf: &[i8], offset: i64) -> i64 {
+fn unsigned_short_big_endian(buf: &[u8], offset: i64) -> i64 {
     i64::from(
         (i32::from(buf[offset as usize]) & 0xff_i32) << 8
             | i32::from(buf[(offset + 1) as usize]) & 0xff_i32,
@@ -708,8 +708,10 @@ impl MmC2r<'_> {
         // First instrument is an unused dummy instrument
         state.src.instruments.push(Instrument::dummy());
         while inst_idx < 32 {
-            let sample_length =
-                unsigned_short_big_endian(state.src.module_data, inst_idx * 30 + 12) * 2;
+            let sample_length = unsigned_short_big_endian(
+                bytemuck::cast_slice(state.src.module_data),
+                inst_idx * 30 + 12,
+            ) * 2;
             let fine_tune = i64::from(
                 i32::from(state.src.module_data[(inst_idx * 30 + 14) as usize]) & 0xf_i32,
             );
@@ -718,10 +720,14 @@ impl MmC2r<'_> {
                 i32::from(state.src.module_data[(inst_idx * 30 + 15) as usize]) & 0x7f_i32,
             );
             let volume = (if volume > 64 { 64 } else { volume }) as u8;
-            let mut loop_start =
-                unsigned_short_big_endian(state.src.module_data, inst_idx * 30 + 16) * 2;
-            let mut loop_length =
-                unsigned_short_big_endian(state.src.module_data, inst_idx * 30 + 18) * 2;
+            let mut loop_start = unsigned_short_big_endian(
+                bytemuck::cast_slice(state.src.module_data),
+                inst_idx * 30 + 16,
+            ) * 2;
+            let mut loop_length = unsigned_short_big_endian(
+                bytemuck::cast_slice(state.src.module_data),
+                inst_idx * 30 + 18,
+            ) * 2;
             if loop_start + loop_length > sample_length {
                 if loop_start / 2 + loop_length <= sample_length {
                     loop_start /= 2;
@@ -805,7 +811,9 @@ impl MmC2r<'_> {
             1084 + 4 * numchan * 64 * calculate_num_patterns(bytemuck::cast_slice(module_header));
         inst_idx = 1;
         while inst_idx < 32 {
-            length += unsigned_short_big_endian(module_header, inst_idx * 30 + 12) * 2;
+            length +=
+                unsigned_short_big_endian(bytemuck::cast_slice(module_header), inst_idx * 30 + 12)
+                    * 2;
             inst_idx += 1;
         }
         Some(length)
