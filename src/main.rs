@@ -504,14 +504,13 @@ fn channel_tick(
         update_frequency(chan, sample_rate, gain, c2_rate);
     }
 }
-fn sequence_row(state: &mut State) -> i64 {
-    let mut song_end;
+fn sequence_row(state: &mut State) -> bool {
+    let mut song_end = false;
     let mut chan_idx;
     let mut pat_offset;
     let mut effect;
     let mut param;
     let mut note;
-    song_end = 0;
     if state.next_row < 0 {
         state.break_pattern = state.pattern + 1;
         state.next_row = 0;
@@ -522,7 +521,7 @@ fn sequence_row(state: &mut State) -> i64 {
             state.break_pattern = state.next_row;
         }
         if state.break_pattern <= state.pattern {
-            song_end = 1;
+            song_end = true;
         }
         state.pattern = state.break_pattern;
         chan_idx = 0;
@@ -584,10 +583,9 @@ fn sequence_row(state: &mut State) -> i64 {
     }
     song_end
 }
-fn sequence_tick(state: &mut State) -> i64 {
-    let mut song_end;
+fn sequence_tick(state: &mut State) -> bool {
+    let mut song_end = false;
     let mut chan_idx;
-    song_end = 0;
     state.tick -= 1;
     if state.tick <= 0 {
         state.tick = state.speed;
@@ -791,12 +789,11 @@ impl State<'_> {
 
 pub fn micromod_calculate_song_duration(state: &mut State) -> i64 {
     let mut duration;
-    let mut song_end;
     duration = 0;
     if state.num_channels > 0 {
         micromod_set_position(0, state);
-        song_end = 0;
-        while song_end == 0 {
+        let mut song_end = false;
+        while !song_end {
             duration += state.tick_len;
             song_end = sequence_tick(state);
         }
@@ -863,14 +860,15 @@ pub fn micromod_set_gain(value: i64, state: &mut State) {
     state.gain = value;
 }
 
-pub fn micromod_get_audio(output_buffer: &mut [i16], mut count: i64, state: &mut State) {
+pub fn micromod_get_audio(output_buffer: &mut [i16], mut count: i64, state: &mut State) -> bool {
     let mut offset;
     let mut remain;
     let mut chan_idx;
     if state.num_channels <= 0 {
-        return;
+        return false;
     }
     offset = 0;
+    let mut cnt = true;
     while count > 0 {
         remain = state.tick_len - state.tick_offset;
         if remain > count {
@@ -889,12 +887,15 @@ pub fn micromod_get_audio(output_buffer: &mut [i16], mut count: i64, state: &mut
         }
         state.tick_offset += remain;
         if state.tick_offset == state.tick_len {
-            sequence_tick(state);
+            if sequence_tick(state) {
+                cnt = false;
+            }
             state.tick_offset = 0;
         }
         offset += remain;
         count -= remain;
     }
+    cnt
 }
 
 use std::io::{BufWriter, Write as _};
@@ -904,9 +905,11 @@ fn main() {
     let output_file = std::fs::File::create("output.pcm").unwrap();
     let mut writer = BufWriter::new(output_file);
     let mut state = State::init(&mod_data, 48_000).unwrap();
-    for _ in 0..1000 {
+    loop {
         let mut out = [0; 4096];
-        micromod_get_audio(&mut out, 2048, &mut state);
+        if !micromod_get_audio(&mut out, 2048, &mut state) {
+            return;
+        }
         for sample in out {
             writer.write_all(sample.to_le_bytes().as_slice()).unwrap();
         }
