@@ -131,20 +131,20 @@ impl Engine<'_> {
     }
     /// Calculate the length of the module file... In samples. Presumably.
     pub fn calculate_mod_file_len(&self) -> Option<u32> {
-        let module_header = self.src.module_data;
+        let header = self.src.module_data;
         let numchan = u32::from(crate::parse::calculate_num_channels(bytemuck::cast_slice(
-            module_header,
+            header,
         ))?);
         let mut length = 1084
             + 4 * numchan
                 * 64
                 * u32::from(crate::parse::calculate_num_patterns(bytemuck::cast_slice(
-                    module_header,
+                    header,
                 )));
         let mut inst_idx = 1;
         while inst_idx < 32 {
             length += u32::from(
-                bytemuck::cast_slice(module_header)
+                bytemuck::cast_slice(header)
                     .read_u16_be(inst_idx * 30 + 12)
                     .unwrap(),
             ) * 2;
