@@ -282,13 +282,10 @@ fn channel_row(chan: &mut Channel, sample_rate: i64, src: &ModSrc, playback: &mu
     let period;
     let effect = i64::from(chan.note.effect);
     let param = i64::from(chan.note.param);
-    let fresh0 = &mut chan.fx_count;
-    *fresh0 = 0;
-    let fresh1 = &mut chan.arpeggio_add;
-    *fresh1 = *fresh0 as i8;
-    let fresh2 = &mut chan.tremolo_add;
-    *fresh2 = *fresh1;
-    chan.vibrato_add = *fresh2;
+    chan.fx_count = 0;
+    chan.arpeggio_add = 0;
+    chan.tremolo_add = 0;
+    chan.vibrato_add = 0;
     if !(effect == 0x1d && param > 0) {
         trigger(chan, &src.instruments);
     }
