@@ -190,7 +190,7 @@ fn tone_portamento(chan: &mut Channel) {
 }
 fn volume_slide(chan: &mut Channel, param: i64) {
     let mut volume;
-    volume = chan.volume as i64 + (param >> 4) - (param & 0xf_i32 as i64);
+    volume = chan.volume as i64 + (param >> 4) - (param & 0xf);
     volume = volume.clamp(0, 64);
     chan.volume = volume as u8;
 }
@@ -198,20 +198,20 @@ fn waveform(phase: i64, type_0: i64, random_seed: &mut i64) -> i64 {
     let mut amplitude: i64 = 0;
     match type_0 & 0x3 {
         0 => {
-            amplitude = SINE_TABLE[(phase & 0x1f_i32 as i64) as usize] as i64;
+            amplitude = SINE_TABLE[(phase & 0x1f) as usize] as i64;
             if phase & 0x20 > 0 {
                 amplitude = -amplitude;
             }
         }
         1 => {
-            amplitude = 255 - (((phase + 0x20) & 0x3f_i32 as i64) << 3);
+            amplitude = 255 - (((phase + 0x20) & 0x3f) << 3);
         }
         2 => {
             amplitude = 255 - ((phase & 0x20) << 4);
         }
         3 => {
             amplitude = (*random_seed >> 20) - 255;
-            *random_seed = (*random_seed * 65 + 17) & 0x1fffffff_i32 as i64;
+            *random_seed = (*random_seed * 65 + 17) & 0x1fffffff;
         }
         _ => {}
     }
@@ -298,7 +298,7 @@ fn channel_row(
     let fresh2 = &mut chan.tremolo_add;
     *fresh2 = *fresh1;
     chan.vibrato_add = *fresh2;
-    if !(effect == 0x1d_i32 as i64 && param > 0) {
+    if !(effect == 0x1d && param > 0) {
         trigger(chan, instruments);
     }
     match effect {
@@ -311,8 +311,8 @@ fn channel_row(
             if param & 0xf0 > 0 {
                 chan.vibrato_speed = (param >> 4) as u8;
             }
-            if param & 0xf_i32 as i64 > 0 {
-                chan.vibrato_depth = (param & 0xf_i32 as i64) as u8;
+            if param & 0xf > 0 {
+                chan.vibrato_depth = (param & 0xf) as u8;
             }
             vibrato(chan, random_seed);
         }
@@ -323,8 +323,8 @@ fn channel_row(
             if param & 0xf0 > 0 {
                 chan.tremolo_speed = (param >> 4) as u8;
             }
-            if param & 0xf_i32 as i64 > 0 {
-                chan.tremolo_depth = (param & 0xf_i32 as i64) as u8;
+            if param & 0xf > 0 {
+                chan.tremolo_depth = (param & 0xf) as u8;
             }
             tremolo(chan, random_seed);
         }
@@ -347,7 +347,7 @@ fn channel_row(
                 if *break_pattern < 0 {
                     *break_pattern = *pattern + 1;
                 }
-                *next_row = (param >> 4) * 10 + (param & 0xf_i32 as i64);
+                *next_row = (param >> 4) * 10 + (param & 0xf);
                 if *next_row >= 64 {
                     *next_row = 0;
                 }
@@ -479,7 +479,7 @@ fn channel_tick(
                 chan.arpeggio_add = (param >> 4) as i8;
             }
             if chan.fx_count as i32 == 2 {
-                chan.arpeggio_add = (param & 0xf_i32 as i64) as i8;
+                chan.arpeggio_add = (param & 0xf) as i8;
             }
         }
         25 => {
@@ -530,12 +530,12 @@ fn sequence_row(state: &mut State) -> i64 {
             state.channels[chan_idx as usize].pl_row = 0;
             chan_idx += 1;
         }
-        state.break_pattern = -1_i32 as i64;
+        state.break_pattern = -1;
     }
     state.row = state.next_row;
     state.next_row = state.row + 1;
     if state.next_row >= 64 {
-        state.next_row = -1_i32 as i64;
+        state.next_row = -1;
     }
     pat_offset = ((state.sequence[state.pattern as usize] as i32 * 64) as i64 + state.row)
         * state.num_channels
@@ -553,12 +553,12 @@ fn sequence_row(state: &mut State) -> i64 {
         effect = (pattern_data[(pat_offset + 2) as usize] as i32 & 0xf_i32) as i64;
         param = pattern_data[(pat_offset + 3) as usize] as i64;
         pat_offset += 4;
-        if effect == 0xe_i32 as i64 {
+        if effect == 0xe {
             effect = 0x10 | param >> 4;
-            param &= 0xf_i32 as i64;
+            param &= 0xf;
         }
         if effect == 0 && param > 0 {
-            effect = 0xe_i32 as i64;
+            effect = 0xe;
         }
         note.effect = effect as u8;
         note.param = param as u8;
@@ -686,7 +686,7 @@ pub fn micromod_calculate_mod_file_len(module_header: &[i8]) -> i64 {
     let mut inst_idx;
     let numchan = calculate_num_channels(module_header);
     if numchan <= 0 {
-        return -1_i32 as i64;
+        return -1;
     }
     length = 1084 + 4 * numchan * 64 * calculate_num_patterns(module_header);
     inst_idx = 1;
@@ -783,7 +783,7 @@ impl State<'_> {
         }
         state.c2_rate = (if state.num_channels > 4 { 8363 } else { 8287 }) as i64;
         state.gain = (if state.num_channels > 4 { 32 } else { 64 }) as i64;
-        micromod_mute_channel(-1_i32 as i64, &mut state);
+        micromod_mute_channel(-1, &mut state);
         micromod_set_position(0, &mut state);
         Ok(state)
     }
@@ -819,9 +819,9 @@ fn micromod_set_position(mut pos: i64, state: &mut State) {
     state.tick = 1;
     state.speed = 6;
     set_tempo(125, &mut state.tick_len, &mut state.sample_rate);
-    state.pl_channel = -1_i32 as i64;
+    state.pl_channel = -1;
     state.pl_count = state.pl_channel;
-    state.random_seed = 0xabcdef_i32 as i64;
+    state.random_seed = 0xabcdef;
     chan_idx = 0;
     while chan_idx < state.num_channels {
         chan = &mut state.channels[chan_idx as usize];
