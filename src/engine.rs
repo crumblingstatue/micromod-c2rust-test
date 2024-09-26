@@ -40,10 +40,9 @@ impl Engine<'_> {
         mm.src.num_patterns = crate::parse::calculate_num_patterns(data).into();
         let mut sample_data_offset: usize =
             1084 + mm.src.num_patterns as usize * 64 * num_channels as usize * 4;
-        let mut inst_idx = 1;
         // First instrument is an unused dummy instrument
         mm.src.instruments.push(Instrument::dummy());
-        while inst_idx < 32 {
+        for inst_idx in 1..32 {
             let sample_length = u32::from(data.read_u16_be(inst_idx * 30 + 12).unwrap()) * 2;
             let fine_tune = i32::from(data[inst_idx * 30 + 14]) & 0xf;
             let fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
@@ -68,7 +67,6 @@ impl Engine<'_> {
             let loop_length = loop_length << 14;
             let sample_data = bytemuck::cast_slice(&data[sample_data_offset..]);
             sample_data_offset += sample_length as usize;
-            inst_idx += 1;
             mm.src.instruments.push(Instrument {
                 volume,
                 fine_tune,
