@@ -38,7 +38,8 @@ impl Engine<'_> {
             playback: PlaybackState::default(),
         };
         mm.src.num_patterns = crate::parse::calculate_num_patterns(data).into();
-        let mut sample_data_offset = 1084 + mm.src.num_patterns * 64 * mm.src.num_channels * 4;
+        let mut sample_data_offset: usize =
+            1084 + mm.src.num_patterns as usize * 64 * num_channels as usize * 4;
         let mut inst_idx = 1;
         // First instrument is an unused dummy instrument
         mm.src.instruments.push(Instrument::dummy());
@@ -65,8 +66,8 @@ impl Engine<'_> {
             }
             let loop_start = loop_start << 14;
             let loop_length = loop_length << 14;
-            let sample_data = bytemuck::cast_slice(&data[sample_data_offset as usize..]);
-            sample_data_offset += sample_length as i32;
+            let sample_data = bytemuck::cast_slice(&data[sample_data_offset..]);
+            sample_data_offset += sample_length as usize;
             inst_idx += 1;
             mm.src.instruments.push(Instrument {
                 volume,
