@@ -13,6 +13,8 @@
 )]
 
 mod consts;
+#[cfg(test)]
+mod tests;
 
 use std::cmp::Ordering;
 
@@ -852,16 +854,4 @@ fn micromod_set_position(mut pos: i64, mm: &mut MmC2r) {
     }
     sequence_tick(mm);
     mm.playback.tick_offset = 0;
-}
-
-#[test]
-fn test_against_orig() {
-    let mut test_bytes: Vec<u8> = Vec::new();
-    let mut mm = MmC2r::new(include_bytes!("../testdata/rainysum.mod"), 48_000).unwrap();
-    for _ in 0..1000 {
-        let mut out = [0; 4096];
-        mm.get_audio(&mut out, 2048);
-        test_bytes.extend_from_slice(bytemuck::cast_slice(&out));
-    }
-    assert!(test_bytes == include_bytes!("../testdata/orig.pcm"));
 }
