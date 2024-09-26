@@ -109,7 +109,7 @@ pub struct MmC2r<'src> {
     playback: PlaybackState,
 }
 
-fn calculate_num_patterns(module_header: &[i8]) -> i64 {
+fn calculate_num_patterns(module_header: &[u8]) -> i64 {
     let mut num_patterns_0;
     let mut order_entry;
     let mut pattern_0;
@@ -701,7 +701,8 @@ impl MmC2r<'_> {
             },
             playback: PlaybackState::default(),
         };
-        state.src.num_patterns = calculate_num_patterns(state.src.module_data);
+        state.src.num_patterns =
+            calculate_num_patterns(bytemuck::cast_slice(state.src.module_data));
         let mut sample_data_offset =
             1084 + state.src.num_patterns * 64 * state.src.num_channels * 4;
         let mut inst_idx = 1;
@@ -801,7 +802,8 @@ impl MmC2r<'_> {
 
         let mut inst_idx;
         let numchan = calculate_num_channels(module_header)?;
-        length = 1084 + 4 * numchan * 64 * calculate_num_patterns(module_header);
+        length =
+            1084 + 4 * numchan * 64 * calculate_num_patterns(bytemuck::cast_slice(module_header));
         inst_idx = 1;
         while inst_idx < 32 {
             length += unsigned_short_big_endian(module_header, inst_idx * 30 + 12) * 2;
