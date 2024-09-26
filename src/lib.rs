@@ -647,9 +647,9 @@ fn resample(
                     buf_idx = buf_idx.wrapping_add(1);
                 }
                 while sidx < epos {
-                    let fresh13 = &mut (buf[buf_idx]);
-                    *fresh13 = (i32::from(*fresh13) + i32::from(sdat[sidx >> 14]) * i32::from(ampl))
-                        as i16;
+                    let sample = &mut (buf[buf_idx]);
+                    *sample =
+                        (i32::from(*sample) + i32::from(sdat[sidx >> 14]) * i32::from(ampl)) as i16;
                     buf_idx = buf_idx.wrapping_add(2);
                     sidx = sidx.wrapping_add(step);
                 }
