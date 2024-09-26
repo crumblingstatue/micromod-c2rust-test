@@ -83,41 +83,41 @@ struct ModSrc<'src> {
     module_data: &'src [i8],
     pattern_data: &'src [u8],
     sequence: &'src [u8],
-    num_patterns: i64,
-    num_channels: i64,
-    song_length: i64,
+    num_patterns: i32,
+    num_channels: i32,
+    song_length: i32,
 }
 
 #[derive(Default)]
 struct PlaybackState {
-    gain: i64,
-    c2_rate: i64,
-    tick_len: i64,
-    tick_offset: i64,
-    pattern: i64,
-    break_pattern: i64,
-    row: i64,
-    next_row: i64,
-    tick: i64,
-    speed: i64,
-    pl_count: i64,
-    pl_channel: i64,
-    random_seed: i64,
+    gain: i32,
+    c2_rate: i32,
+    tick_len: i32,
+    tick_offset: i32,
+    pattern: i32,
+    break_pattern: i32,
+    row: i32,
+    next_row: i32,
+    tick: i32,
+    speed: i32,
+    pl_count: i32,
+    pl_channel: i32,
+    random_seed: i32,
 }
 
 /// A micromod decoding instance thingy.
 pub struct MmC2r<'src> {
-    sample_rate: i64,
+    sample_rate: i32,
     channels: [Channel; 16],
     src: ModSrc<'src>,
     playback: PlaybackState,
 }
 
-fn calculate_num_patterns(module_header: &[u8]) -> i64 {
+fn calculate_num_patterns(module_header: &[u8]) -> i32 {
     let mut num = 0;
     let mut i = 0;
     while i < 128 {
-        let order_entry = i64::from(i32::from(module_header[(952 + i) as usize]) & 0x7f);
+        let order_entry = i32::from(module_header[(952 + i) as usize]) & 0x7f;
         if order_entry >= num {
             num = order_entry + 1;
         }
@@ -126,16 +126,16 @@ fn calculate_num_patterns(module_header: &[u8]) -> i64 {
     num
 }
 
-fn calculate_num_channels(module_header: &[u8]) -> Option<i64> {
-    const MAX_CHANNELS: i64 = 16;
-    let numchan: i64 = match (i64::from(module_header[1082]) << 8) | i64::from(module_header[1083])
+fn calculate_num_channels(module_header: &[u8]) -> Option<i32> {
+    const MAX_CHANNELS: i32 = 16;
+    let numchan: i32 = match (i32::from(module_header[1082]) << 8) | i32::from(module_header[1083])
     {
         // M.K.  M!K!     N.T.     FLT4
         0x4b2e | 0x4b21 | 0x542e | 0x5434 => 4,
         // xCHN
-        0x484e => i64::from(module_header[1080] - 48),
+        0x484e => i32::from(module_header[1080] - 48),
         // xxCH
-        0x4348 => i64::from(((module_header[1080] - 48) * 10) + (module_header[1081] - 48)),
+        0x4348 => i32::from(((module_header[1080] - 48) * 10) + (module_header[1081] - 48)),
         // Not recognised.
         _ => 0,
     };
@@ -145,35 +145,35 @@ fn calculate_num_channels(module_header: &[u8]) -> Option<i64> {
         Some(numchan)
     }
 }
-fn set_tempo(tempo: i64, tick_len: &mut i64, sample_rate: i64) {
+fn set_tempo(tempo: i32, tick_len: &mut i32, sample_rate: i32) {
     *tick_len = ((sample_rate << 1) + (sample_rate >> 1)) / tempo;
 }
-fn update_frequency(chan: &mut Channel, sample_rate: i64, gain: i64, c2_rate: i64) {
-    let mut period = i64::from(i32::from(chan.period) + i32::from(chan.vibrato_add));
-    period = (period * i64::from(consts::ARP_TUNING[chan.arpeggio_add as usize])) >> 11;
+fn update_frequency(chan: &mut Channel, sample_rate: i32, gain: i32, c2_rate: i32) {
+    let mut period = i32::from(chan.period) + i32::from(chan.vibrato_add);
+    period = (period * i32::from(consts::ARP_TUNING[chan.arpeggio_add as usize])) >> 11;
     period = (period >> 1) + (period & 1);
     if period < 14 {
         period = 6848;
     }
     let freq = (c2_rate * 428 / period) as u64;
     chan.step = (freq << 14).wrapping_div(sample_rate as u64) as usize;
-    let mut volume = i64::from(i32::from(chan.volume) + i32::from(chan.tremolo_add));
+    let mut volume = i32::from(chan.volume) + i32::from(chan.tremolo_add);
     volume = volume.clamp(0, 64);
     chan.ampl = ((volume * gain) >> 5) as u8;
 }
 fn tone_portamento(chan: &mut Channel) {
-    let mut source = i64::from(chan.period);
-    let dest = i64::from(chan.porta_period);
+    let mut source = i32::from(chan.period);
+    let dest = i32::from(chan.porta_period);
     match source.cmp(&dest) {
         Ordering::Less => {
-            source += i64::from(chan.porta_speed);
+            source += i32::from(chan.porta_speed);
             if source > dest {
                 source = dest;
             }
         }
         Ordering::Equal => { /* Do absolutely nothing */ }
         Ordering::Greater => {
-            source -= i64::from(chan.porta_speed);
+            source -= i32::from(chan.porta_speed);
             if source < dest {
                 source = dest;
             }
@@ -181,16 +181,16 @@ fn tone_portamento(chan: &mut Channel) {
     }
     chan.period = source as u16;
 }
-fn volume_slide(chan: &mut Channel, param: i64) {
-    let mut volume = i64::from(chan.volume) + (param >> 4) - (param & 0xf);
+fn volume_slide(chan: &mut Channel, param: i32) {
+    let mut volume = i32::from(chan.volume) + (param >> 4) - (param & 0xf);
     volume = volume.clamp(0, 64);
     chan.volume = volume as u8;
 }
-fn waveform(phase: i64, type_0: i64, random_seed: &mut i64) -> i64 {
-    let mut amplitude: i64 = 0;
+fn waveform(phase: i32, type_0: i32, random_seed: &mut i32) -> i32 {
+    let mut amplitude: i32 = 0;
     match type_0 & 0x3 {
         0 => {
-            amplitude = i64::from(consts::SINE_TABLE[(phase & 0x1f) as usize]);
+            amplitude = i32::from(consts::SINE_TABLE[(phase & 0x1f) as usize]);
             if phase & 0x20 > 0 {
                 amplitude = -amplitude;
             }
@@ -209,24 +209,24 @@ fn waveform(phase: i64, type_0: i64, random_seed: &mut i64) -> i64 {
     }
     amplitude
 }
-fn vibrato(chan: &mut Channel, random_seed: &mut i64) {
+fn vibrato(chan: &mut Channel, random_seed: &mut i32) {
     chan.vibrato_add = ((waveform(
-        i64::from(chan.vibrato_phase),
-        i64::from(chan.vibrato_type),
+        i32::from(chan.vibrato_phase),
+        i32::from(chan.vibrato_type),
         random_seed,
-    ) * i64::from(chan.vibrato_depth))
+    ) * i32::from(chan.vibrato_depth))
         >> 7) as i8;
 }
-fn tremolo(chan: &mut Channel, random_seed: &mut i64) {
+fn tremolo(chan: &mut Channel, random_seed: &mut i32) {
     chan.tremolo_add = ((waveform(
-        i64::from(chan.tremolo_phase),
-        i64::from(chan.tremolo_type),
+        i32::from(chan.tremolo_phase),
+        i32::from(chan.tremolo_type),
         random_seed,
-    ) * i64::from(chan.tremolo_depth))
+    ) * i32::from(chan.tremolo_depth))
         >> 6) as i8;
 }
 fn trigger(channel: &mut Channel, instruments: &[Instrument]) {
-    let ins = i64::from(channel.note.instrument);
+    let ins = i32::from(channel.note.instrument);
     if ins > 0 && ins < 32 {
         channel.assigned = ins as u8;
         channel.sample_offset = 0;
@@ -242,11 +242,9 @@ fn trigger(channel: &mut Channel, instruments: &[Instrument]) {
         channel.fine_tune = channel.note.param;
     }
     if channel.note.key > 0 {
-        let period = i64::from(
-            (i32::from(channel.note.key)
-                * i32::from(consts::FINE_TUNING[(i32::from(channel.fine_tune) & 0xf) as usize]))
-                >> 11,
-        );
+        let period = (i32::from(channel.note.key)
+            * i32::from(consts::FINE_TUNING[(i32::from(channel.fine_tune) & 0xf) as usize]))
+            >> 11;
         channel.porta_period = ((period >> 1) + (period & 1)) as u16;
         if channel.note.effect != 0x3 && channel.note.effect != 0x5 {
             channel.instrument = channel.assigned;
@@ -282,9 +280,9 @@ impl ByteSliceExt for [u8] {
     }
 }
 
-fn channel_row(chan: &mut Channel, sample_rate: i64, src: &ModSrc, playback: &mut PlaybackState) {
-    let effect = i64::from(chan.note.effect);
-    let param = i64::from(chan.note.param);
+fn channel_row(chan: &mut Channel, sample_rate: i32, src: &ModSrc, playback: &mut PlaybackState) {
+    let effect = i32::from(chan.note.effect);
+    let param = i32::from(chan.note.param);
     chan.fx_count = 0;
     chan.arpeggio_add = 0;
     chan.tremolo_add = 0;
@@ -355,11 +353,11 @@ fn channel_row(chan: &mut Channel, sample_rate: i64, src: &ModSrc, playback: &mu
             }
         }
         17 => {
-            let period = i64::from(chan.period) - param;
+            let period = i32::from(chan.period) - param;
             chan.period = (if period < 0 { 0 } else { period }) as u16;
         }
         18 => {
-            let period = i64::from(chan.period) + param;
+            let period = i32::from(chan.period) + param;
             chan.period = (if period > 65535 { 65535 } else { period }) as u16;
         }
         20 => {
@@ -371,16 +369,16 @@ fn channel_row(chan: &mut Channel, sample_rate: i64, src: &ModSrc, playback: &mu
             if param == 0 {
                 chan.pl_row = playback.row as u8;
             }
-            if i64::from(chan.pl_row) < playback.row && playback.break_pattern < 0 {
+            if i32::from(chan.pl_row) < playback.row && playback.break_pattern < 0 {
                 if playback.pl_count < 0 {
                     playback.pl_count = param;
-                    playback.pl_channel = i64::from(chan.id);
+                    playback.pl_channel = i32::from(chan.id);
                 }
-                if playback.pl_channel == i64::from(chan.id) {
+                if playback.pl_channel == i32::from(chan.id) {
                     if playback.pl_count == 0 {
                         chan.pl_row = (playback.row + 1) as u8;
                     } else {
-                        playback.next_row = i64::from(chan.pl_row);
+                        playback.next_row = i32::from(chan.pl_row);
                     }
                     playback.pl_count -= 1;
                 }
@@ -392,11 +390,11 @@ fn channel_row(chan: &mut Channel, sample_rate: i64, src: &ModSrc, playback: &mu
             }
         }
         26 => {
-            let volume = i64::from(chan.volume) + param;
+            let volume = i32::from(chan.volume) + param;
             chan.volume = (if volume > 64 { 64 } else { volume }) as u8;
         }
         27 => {
-            let volume = i64::from(chan.volume) - param;
+            let volume = i32::from(chan.volume) - param;
             chan.volume = (if volume < 0 { 0 } else { volume }) as u8;
         }
         28 => {
@@ -413,22 +411,22 @@ fn channel_row(chan: &mut Channel, sample_rate: i64, src: &ModSrc, playback: &mu
 }
 fn channel_tick(
     chan: &mut Channel,
-    sample_rate: i64,
-    gain: i64,
-    c2_rate: i64,
-    random_seed: &mut i64,
+    sample_rate: i32,
+    gain: i32,
+    c2_rate: i32,
+    random_seed: &mut i32,
     instruments: &[Instrument],
 ) {
-    let effect = i64::from(chan.note.effect);
-    let param = i64::from(chan.note.param);
+    let effect = i32::from(chan.note.effect);
+    let param = i32::from(chan.note.param);
     chan.fx_count = chan.fx_count.wrapping_add(1);
     match effect {
         1 => {
-            let period = i64::from(chan.period) - param;
+            let period = i32::from(chan.period) - param;
             chan.period = (if period < 0 { 0 } else { period }) as u16;
         }
         2 => {
-            let period = i64::from(chan.period) + param;
+            let period = i32::from(chan.period) + param;
             chan.period = (if period > 65535 { 65535 } else { period }) as u16;
         }
         3 => {
@@ -472,18 +470,18 @@ fn channel_tick(
             }
         }
         25 => {
-            if i64::from(chan.fx_count) >= param {
+            if i32::from(chan.fx_count) >= param {
                 chan.fx_count = 0;
                 chan.sample_idx = 0;
             }
         }
         28 => {
-            if param == i64::from(chan.fx_count) {
+            if param == i32::from(chan.fx_count) {
                 chan.volume = 0;
             }
         }
         29 => {
-            if param == i64::from(chan.fx_count) {
+            if param == i32::from(chan.fx_count) {
                 trigger(chan, instruments);
             }
         }
@@ -527,8 +525,7 @@ fn sequence_row(
     if playback.next_row >= 64 {
         playback.next_row = -1;
     }
-    let mut pat_offset = (i64::from(i32::from(src.sequence[playback.pattern as usize]) * 64)
-        + playback.row)
+    let mut pat_offset = ((i32::from(src.sequence[playback.pattern as usize]) * 64) + playback.row)
         * src.num_channels
         * 4;
     let mut chan_idx = 0;
@@ -541,8 +538,8 @@ fn sequence_row(
         note.instrument = (i32::from(pattern_data[(pat_offset + 2) as usize]) >> 4) as u8;
         note.instrument = (i32::from(note.instrument)
             | i32::from(pattern_data[pat_offset as usize]) & 0x10) as u8;
-        let mut effect = i64::from(i32::from(pattern_data[(pat_offset + 2) as usize]) & 0xf);
-        let mut param = i64::from(pattern_data[(pat_offset + 3) as usize]);
+        let mut effect = i32::from(pattern_data[(pat_offset + 2) as usize]) & 0xf;
+        let mut param = i32::from(pattern_data[(pat_offset + 3) as usize]);
         pat_offset += 4;
         if effect == 0xe {
             effect = 0x10 | param >> 4;
@@ -674,7 +671,7 @@ pub enum InitError {
 
 impl MmC2r<'_> {
     /// Create a new micromod decoder apparatus.
-    pub fn new(data: &[u8], sample_rate: i64) -> Result<MmC2r, InitError> {
+    pub fn new(data: &[u8], sample_rate: i32) -> Result<MmC2r, InitError> {
         let num_channels = match calculate_num_channels(data) {
             Some(num_channels) => num_channels,
             None => return Err(InitError::ChannelNumIncorrect),
@@ -682,7 +679,7 @@ impl MmC2r<'_> {
         if sample_rate < 8000 {
             return Err(InitError::SamplingRateIncorrect);
         }
-        let song_length = i64::from(i32::from(data[950]) & 0x7f);
+        let song_length = i32::from(data[950]) & 0x7f;
         let sequence = &data[952..];
         let pattern_data = &data[1084..];
         let mut mm = MmC2r {
@@ -710,9 +707,9 @@ impl MmC2r<'_> {
                     .read_u16_be(inst_idx * 30 + 12)
                     .unwrap(),
             ) * 2;
-            let fine_tune = i64::from(i32::from(mm.src.module_data[inst_idx * 30 + 14]) & 0xf);
+            let fine_tune = i32::from(mm.src.module_data[inst_idx * 30 + 14]) & 0xf;
             let fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
-            let volume = i64::from(i32::from(mm.src.module_data[inst_idx * 30 + 15]) & 0x7f);
+            let volume = i32::from(mm.src.module_data[inst_idx * 30 + 15]) & 0x7f;
             let volume = (if volume > 64 { 64 } else { volume }) as u8;
 
             let mut loop_start = u64::from(
@@ -740,7 +737,7 @@ impl MmC2r<'_> {
             let loop_start = loop_start << 14;
             let loop_length = loop_length << 14;
             let sample_data = &bytemuck::cast_slice::<u8, i8>(data)[sample_data_offset as usize..];
-            sample_data_offset += sample_length as i64;
+            sample_data_offset += sample_length as i32;
             inst_idx += 1;
             mm.src.instruments.push(Instrument {
                 volume,
@@ -750,8 +747,8 @@ impl MmC2r<'_> {
                 sample_data,
             });
         }
-        mm.playback.c2_rate = i64::from(if mm.src.num_channels > 4 { 8363 } else { 8287 });
-        mm.playback.gain = i64::from(if mm.src.num_channels > 4 { 32 } else { 64 });
+        mm.playback.c2_rate = if mm.src.num_channels > 4 { 8363 } else { 8287 };
+        mm.playback.gain = if mm.src.num_channels > 4 { 32 } else { 64 };
         mm.mute_channel(-1);
         micromod_set_position(0, &mut mm);
         Ok(mm)
@@ -765,8 +762,8 @@ impl MmC2r<'_> {
         let mut cnt = true;
         while count > 0 {
             let mut remain = self.playback.tick_len - self.playback.tick_offset;
-            if remain > count as i64 {
-                remain = count as i64;
+            if remain > count as i32 {
+                remain = count as i32;
             }
             let mut chan_idx = 0;
             while chan_idx < self.src.num_channels {
@@ -792,14 +789,14 @@ impl MmC2r<'_> {
         cnt
     }
     /// Calculate the length of the module file... In samples. Presumably.
-    pub fn calculate_mod_file_len(&self) -> Option<i64> {
+    pub fn calculate_mod_file_len(&self) -> Option<i32> {
         let module_header = self.src.module_data;
         let numchan = calculate_num_channels(bytemuck::cast_slice(module_header))?;
         let mut length =
             1084 + 4 * numchan * 64 * calculate_num_patterns(bytemuck::cast_slice(module_header));
         let mut inst_idx = 1;
         while inst_idx < 32 {
-            length += i64::from(
+            length += i32::from(
                 bytemuck::cast_slice(module_header)
                     .read_u16_be(inst_idx * 30 + 12)
                     .unwrap(),
@@ -809,7 +806,7 @@ impl MmC2r<'_> {
         Some(length)
     }
     /// Calculate the song duration... Okay.
-    pub fn calculate_song_duration(&mut self) -> i64 {
+    pub fn calculate_song_duration(&mut self) -> i32 {
         let mut duration = 0;
         if self.src.num_channels > 0 {
             micromod_set_position(0, self);
@@ -823,7 +820,7 @@ impl MmC2r<'_> {
         duration
     }
     /// Mute a channel.
-    pub fn mute_channel(&mut self, channel: i64) -> i64 {
+    pub fn mute_channel(&mut self, channel: i32) -> i32 {
         if channel < 0 {
             let mut chan_idx = 0;
             while chan_idx < self.src.num_channels {
@@ -836,12 +833,12 @@ impl MmC2r<'_> {
         self.src.num_channels
     }
     /// Set some gainz.
-    pub fn set_gain(&mut self, value: i64) {
+    pub fn set_gain(&mut self, value: i32) {
         self.playback.gain = value;
     }
 }
 
-fn micromod_set_position(mut pos: i64, mm: &mut MmC2r) {
+fn micromod_set_position(mut pos: i32, mm: &mut MmC2r) {
     if mm.src.num_channels <= 0 {
         return;
     }
