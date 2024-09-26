@@ -799,33 +799,6 @@ impl State<'_> {
     }
 }
 
-pub unsafe fn micromod_get_string(instrument: i64, string: *mut i8, state: &mut State) {
-    let mut index;
-    let mut offset;
-    let mut length;
-    let mut character;
-    if state.num_channels <= 0 {
-        *string.offset(0) = 0;
-        return;
-    }
-    offset = 0;
-    length = 20;
-    if instrument > 0 && instrument < 32 {
-        offset = (instrument - 1) * 30 + 20;
-        length = 22;
-    }
-    index = 0;
-    while index < length {
-        character = state.module_data[(offset + index) as usize] as i64;
-        if !(32..=126).contains(&character) {
-            character = ' ' as i32 as i64;
-        }
-        *string.offset(index as isize) = character as i8;
-        index += 1;
-    }
-    *string.offset(length as isize) = 0;
-}
-
 pub fn micromod_calculate_song_duration(state: &mut State) -> i64 {
     let mut duration;
     let mut song_end;
