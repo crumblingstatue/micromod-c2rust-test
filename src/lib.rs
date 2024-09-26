@@ -126,16 +126,16 @@ fn calculate_num_patterns(module_header: &[u8]) -> i32 {
     num
 }
 
-fn calculate_num_channels(module_header: &[u8]) -> Option<i32> {
-    const MAX_CHANNELS: i32 = 16;
-    let numchan: i32 = match (i32::from(module_header[1082]) << 8) | i32::from(module_header[1083])
+fn calculate_num_channels(module_header: &[u8]) -> Option<u16> {
+    const MAX_CHANNELS: u16 = 16;
+    let numchan: u16 = match (u16::from(module_header[1082]) << 8) | u16::from(module_header[1083])
     {
         // M.K.  M!K!     N.T.     FLT4
         0x4b2e | 0x4b21 | 0x542e | 0x5434 => 4,
         // xCHN
-        0x484e => i32::from(module_header[1080] - 48),
+        0x484e => u16::from(module_header[1080] - 48),
         // xxCH
-        0x4348 => i32::from(((module_header[1080] - 48) * 10) + (module_header[1081] - 48)),
+        0x4348 => u16::from(((module_header[1080] - 48) * 10) + (module_header[1081] - 48)),
         // Not recognised.
         _ => 0,
     };
@@ -691,7 +691,7 @@ impl MmC2r<'_> {
                 pattern_data,
                 sequence,
                 num_patterns: Default::default(),
-                num_channels,
+                num_channels: num_channels.into(),
                 song_length,
             },
             playback: PlaybackState::default(),
@@ -791,7 +791,7 @@ impl MmC2r<'_> {
     /// Calculate the length of the module file... In samples. Presumably.
     pub fn calculate_mod_file_len(&self) -> Option<i32> {
         let module_header = self.src.module_data;
-        let numchan = calculate_num_channels(bytemuck::cast_slice(module_header))?;
+        let numchan = i32::from(calculate_num_channels(bytemuck::cast_slice(module_header))?);
         let mut length =
             1084 + 4 * numchan * 64 * calculate_num_patterns(bytemuck::cast_slice(module_header));
         let mut inst_idx = 1;
