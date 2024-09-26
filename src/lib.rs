@@ -147,7 +147,9 @@ fn calculate_num_channels(module_header: &[u8]) -> Option<i64> {
     }
 }
 fn unsigned_short_big_endian(buf: &[u8], offset: usize) -> i64 {
-    i64::from((i32::from(buf[offset]) & 0xff_i32) << 8 | i32::from(buf[offset + 1]) & 0xff_i32)
+    i64::from(u16::from_be_bytes(
+        buf[offset..offset + 2].try_into().unwrap(),
+    ))
 }
 fn set_tempo(tempo: i64, tick_len: &mut i64, sample_rate: i64) {
     *tick_len = ((sample_rate << 1) + (sample_rate >> 1)) / tempo;
