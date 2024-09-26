@@ -145,9 +145,6 @@ fn calculate_num_channels(module_header: &[u8]) -> Option<i64> {
         Some(numchan)
     }
 }
-fn unsigned_short_big_endian(buf: &[u8], offset: usize) -> u16 {
-    u16::from_be_bytes(buf[offset..offset + 2].try_into().unwrap())
-}
 fn set_tempo(tempo: i64, tick_len: &mut i64, sample_rate: i64) {
     *tick_len = ((sample_rate << 1) + (sample_rate >> 1)) / tempo;
 }
@@ -264,6 +261,27 @@ fn trigger(channel: &mut Channel, instruments: &[Instrument]) {
         }
     }
 }
+
+trait SliceExt<T> {
+    fn get_n<const N: usize>(&self, offset: usize) -> Option<&[T; N]>;
+}
+
+trait ByteSliceExt {
+    fn read_u16_be(&self, offset: usize) -> Option<u16>;
+}
+
+impl<T> SliceExt<T> for [T] {
+    fn get_n<const N: usize>(&self, offset: usize) -> Option<&[T; N]> {
+        self.get(offset..).and_then(<[_]>::first_chunk::<N>)
+    }
+}
+
+impl ByteSliceExt for [u8] {
+    fn read_u16_be(&self, offset: usize) -> Option<u16> {
+        self.get_n(offset).map(|arr| u16::from_be_bytes(*arr))
+    }
+}
+
 fn channel_row(chan: &mut Channel, sample_rate: i64, src: &ModSrc, playback: &mut PlaybackState) {
     let effect = i64::from(chan.note.effect);
     let param = i64::from(chan.note.param);
@@ -687,22 +705,27 @@ impl MmC2r<'_> {
         // First instrument is an unused dummy instrument
         mm.src.instruments.push(Instrument::dummy());
         while inst_idx < 32 {
-            let sample_length = u64::from(unsigned_short_big_endian(
-                bytemuck::cast_slice(mm.src.module_data),
-                inst_idx * 30 + 12,
-            )) * 2;
+            let sample_length = u64::from(
+                bytemuck::cast_slice(mm.src.module_data)
+                    .read_u16_be(inst_idx * 30 + 12)
+                    .unwrap(),
+            ) * 2;
             let fine_tune = i64::from(i32::from(mm.src.module_data[inst_idx * 30 + 14]) & 0xf);
             let fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
             let volume = i64::from(i32::from(mm.src.module_data[inst_idx * 30 + 15]) & 0x7f);
             let volume = (if volume > 64 { 64 } else { volume }) as u8;
-            let mut loop_start = u64::from(unsigned_short_big_endian(
-                bytemuck::cast_slice(mm.src.module_data),
-                inst_idx * 30 + 16,
-            )) * 2;
-            let mut loop_length = u64::from(unsigned_short_big_endian(
-                bytemuck::cast_slice(mm.src.module_data),
-                inst_idx * 30 + 18,
-            )) * 2;
+
+            let mut loop_start = u64::from(
+                bytemuck::cast_slice(mm.src.module_data)
+                    .read_u16_be(inst_idx * 30 + 16)
+                    .unwrap(),
+            ) * 2;
+            let mut loop_length = u64::from(
+                bytemuck::cast_slice(mm.src.module_data)
+                    .read_u16_be(inst_idx * 30 + 18)
+                    .unwrap(),
+            ) * 2;
+
             if loop_start + loop_length > sample_length {
                 if loop_start / 2 + loop_length <= sample_length {
                     loop_start /= 2;
@@ -776,10 +799,11 @@ impl MmC2r<'_> {
             1084 + 4 * numchan * 64 * calculate_num_patterns(bytemuck::cast_slice(module_header));
         let mut inst_idx = 1;
         while inst_idx < 32 {
-            length += i64::from(unsigned_short_big_endian(
-                bytemuck::cast_slice(module_header),
-                inst_idx * 30 + 12,
-            )) * 2;
+            length += i64::from(
+                bytemuck::cast_slice(module_header)
+                    .read_u16_be(inst_idx * 30 + 12)
+                    .unwrap(),
+            ) * 2;
             inst_idx += 1;
         }
         Some(length)
