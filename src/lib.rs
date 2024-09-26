@@ -21,9 +21,9 @@ struct Channel {
     note: Note,
     period: u16,
     porta_period: u16,
-    sample_offset: u64,
-    sample_idx: u64,
-    step: u64,
+    sample_offset: usize,
+    sample_idx: usize,
+    step: usize,
     volume: u8,
     panning: u8,
     fine_tune: u8,
@@ -58,8 +58,8 @@ struct Note {
 struct Instrument<'src> {
     volume: u8,
     fine_tune: u8,
-    loop_start: u64,
-    loop_length: u64,
+    loop_start: usize,
+    loop_length: usize,
     sample_data: &'src [i8],
 }
 
@@ -165,7 +165,7 @@ fn update_frequency(chan: &mut Channel, sample_rate: i64, gain: i64, c2_rate: i6
         period = 6848;
     }
     let freq = (c2_rate * 428 / period) as u64;
-    chan.step = (freq << 14).wrapping_div(sample_rate as u64);
+    chan.step = (freq << 14).wrapping_div(sample_rate as u64) as usize;
     volume = i64::from(i32::from(chan.volume) + i32::from(chan.tremolo_add));
     volume = volume.clamp(0, 64);
     chan.ampl = ((volume * gain) >> 5) as u8;
@@ -251,7 +251,7 @@ fn trigger(channel: &mut Channel, instruments: &[Instrument]) {
         }
     }
     if i32::from(channel.note.effect) == 0x9_i32 {
-        channel.sample_offset = ((i32::from(channel.note.param) & 0xff_i32) << 8) as u64;
+        channel.sample_offset = ((i32::from(channel.note.param) & 0xff_i32) << 8) as usize;
     } else if i32::from(channel.note.effect) == 0x15_i32 {
         channel.fine_tune = channel.note.param;
     }
@@ -595,12 +595,12 @@ fn resample(
     instruments: &[Instrument],
 ) {
     let mut epos;
-    let mut buf_idx: u64 = (offset << 1) as u64;
-    let buf_end: u64 = ((offset + count) << 1) as u64;
-    let mut sidx: u64 = chan.sample_idx;
-    let step: u64 = chan.step;
-    let llen: u64 = instruments[chan.instrument as usize].loop_length;
-    let lep1: u64 = (instruments[chan.instrument as usize].loop_start).wrapping_add(llen);
+    let mut buf_idx: usize = (offset << 1) as usize;
+    let buf_end: usize = ((offset + count) << 1) as usize;
+    let mut sidx: usize = chan.sample_idx;
+    let step: usize = chan.step;
+    let llen = instruments[chan.instrument as usize].loop_length;
+    let lep1 = (instruments[chan.instrument as usize].loop_start).wrapping_add(llen);
     let sdat = instruments[chan.instrument as usize].sample_data;
     let mut ampl: i16 = (if chan.mute == 0 {
         i32::from(chan.ampl)
@@ -626,15 +626,15 @@ fn resample(
             }
             if i32::from(lamp) != 0 && i32::from(ramp) != 0 {
                 while sidx < epos {
-                    ampl = i16::from(sdat[(sidx >> 14) as usize]);
+                    ampl = i16::from(sdat[sidx >> 14]);
                     let fresh9 = buf_idx;
                     buf_idx = buf_idx.wrapping_add(1);
-                    let fresh10 = &mut (buf[fresh9 as usize]);
+                    let fresh10 = &mut (buf[fresh9]);
                     *fresh10 =
                         (i32::from(*fresh10) + ((i32::from(ampl) * i32::from(lamp)) >> 2)) as i16;
                     let fresh11 = buf_idx;
                     buf_idx = buf_idx.wrapping_add(1);
-                    let fresh12 = &mut (buf[fresh11 as usize]);
+                    let fresh12 = &mut (buf[fresh11]);
                     *fresh12 =
                         (i32::from(*fresh12) + ((i32::from(ampl) * i32::from(ramp)) >> 2)) as i16;
                     sidx = sidx.wrapping_add(step);
@@ -644,14 +644,13 @@ fn resample(
                     buf_idx = buf_idx.wrapping_add(1);
                 }
                 while sidx < epos {
-                    let fresh13 = &mut (buf[buf_idx as usize]);
-                    *fresh13 = (i32::from(*fresh13)
-                        + i32::from(sdat[(sidx >> 14) as usize]) * i32::from(ampl))
+                    let fresh13 = &mut (buf[buf_idx]);
+                    *fresh13 = (i32::from(*fresh13) + i32::from(sdat[sidx >> 14]) * i32::from(ampl))
                         as i16;
                     buf_idx = buf_idx.wrapping_add(2);
                     sidx = sidx.wrapping_add(step);
                 }
-                buf_idx &= -2_i32 as u64;
+                buf_idx &= -2_i32 as usize;
             }
         } else {
             buf_idx = buf_end;
@@ -745,8 +744,8 @@ impl MmC2r<'_> {
             state.src.instruments.push(Instrument {
                 volume,
                 fine_tune,
-                loop_start,
-                loop_length,
+                loop_start: loop_start as usize,
+                loop_length: loop_length as usize,
                 sample_data,
             });
         }
