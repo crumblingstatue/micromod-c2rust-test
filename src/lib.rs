@@ -76,6 +76,7 @@ struct ModSrc<'src> {
     sequence: &'src [u8],
     num_patterns: i64,
     num_channels: i64,
+    song_length: i64,
 }
 
 /// A micromod decoding instance thingy.
@@ -95,7 +96,6 @@ pub struct MmC2r<'src> {
     pl_channel: i64,
     random_seed: i64,
     channels: [Channel; 16],
-    song_length: i64,
     src: ModSrc<'src>,
 }
 
@@ -524,7 +524,7 @@ fn sequence_row(state: &mut MmC2r) -> bool {
         state.next_row = 0;
     }
     if state.break_pattern >= 0 {
-        if state.break_pattern >= state.song_length {
+        if state.break_pattern >= state.src.song_length {
             state.next_row = 0;
             state.break_pattern = state.next_row;
         }
@@ -731,8 +731,8 @@ impl MmC2r<'_> {
                 sequence,
                 num_patterns: Default::default(),
                 num_channels,
+                song_length,
             },
-            song_length,
         };
         state.src.num_patterns = calculate_num_patterns(state.src.module_data);
         let mut sample_data_offset =
@@ -884,7 +884,7 @@ fn micromod_set_position(mut pos: i64, state: &mut MmC2r) {
     if state.src.num_channels <= 0 {
         return;
     }
-    if pos >= state.song_length {
+    if pos >= state.src.song_length {
         pos = 0;
     }
     state.break_pattern = pos;
