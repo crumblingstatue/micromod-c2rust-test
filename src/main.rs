@@ -167,12 +167,7 @@ fn update_frequency(chan: &mut Channel, sample_rate: &mut i64, gain: &mut i64, c
     let freq = (*c2_rate * 428 / period) as u64;
     chan.step = (freq << 14).wrapping_div(*sample_rate as u64);
     volume = (chan.volume as i32 + chan.tremolo_add as i32) as i64;
-    if volume > 64 {
-        volume = 64;
-    }
-    if volume < 0 {
-        volume = 0;
-    }
+    volume = volume.clamp(0, 64);
     chan.ampl = ((volume * *gain) >> 5) as u8;
 }
 fn tone_portamento(chan: &mut Channel) {
@@ -196,12 +191,7 @@ fn tone_portamento(chan: &mut Channel) {
 fn volume_slide(chan: &mut Channel, param: i64) {
     let mut volume;
     volume = chan.volume as i64 + (param >> 4) - (param & 0xf_i32 as i64);
-    if volume < 0 {
-        volume = 0;
-    }
-    if volume > 64 {
-        volume = 64;
-    }
+    volume = volume.clamp(0, 64);
     chan.volume = volume as u8;
 }
 fn waveform(phase: i64, type_0: i64, random_seed: &mut i64) -> i64 {
