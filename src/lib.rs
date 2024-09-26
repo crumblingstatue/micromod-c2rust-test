@@ -110,7 +110,7 @@ struct PlaybackState {
 /// A micromod decoding instance thingy.
 pub struct MmC2r<'src> {
     sample_rate: i32,
-    channels: [Channel; 16],
+    channels: Vec<Channel>,
     src: ModSrc<'src>,
     playback: PlaybackState,
 }
@@ -654,7 +654,7 @@ impl MmC2r<'_> {
         let pattern_data = &data[1084..];
         let mut mm = MmC2r {
             sample_rate,
-            channels: Default::default(),
+            channels: vec![Channel::default(); num_channels as usize],
             src: ModSrc {
                 instruments: Vec::new(),
                 module_data: bytemuck::cast_slice(data),
