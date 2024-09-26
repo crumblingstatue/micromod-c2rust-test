@@ -1,5 +1,4 @@
 use crate::{
-    channel_row, channel_tick, resample,
     slice_ext::ByteSliceExt as _,
     types::{Channel, Instrument, ModSrc, PlaybackState},
 };
@@ -109,7 +108,7 @@ impl Engine<'_> {
                 remain = count as i32;
             }
             for chan in &mut self.channels {
-                resample(
+                crate::rendering::resample(
                     chan,
                     output_buffer,
                     offset as usize,
@@ -195,7 +194,7 @@ impl Engine<'_> {
         self.playback.next_row = 0;
         self.playback.tick = 1;
         self.playback.speed = 6;
-        crate::set_tempo(125, &mut self.playback.tick_len, self.sample_rate);
+        crate::rendering::set_tempo(125, &mut self.playback.tick_len, self.sample_rate);
         self.playback.pl_channel = -1;
         self.playback.pl_count = self.playback.pl_channel;
         self.playback.random_seed = 0xabcdef;
@@ -271,7 +270,7 @@ impl Engine<'_> {
             }
             note.effect = effect;
             note.param = param;
-            channel_row(chan, *sample_rate, src, playback);
+            crate::rendering::channel_row(chan, *sample_rate, src, playback);
         }
         song_end
     }
@@ -283,7 +282,7 @@ impl Engine<'_> {
             song_end = self.sequence_row();
         } else {
             for chan in &mut self.channels {
-                channel_tick(
+                crate::rendering::channel_tick(
                     chan,
                     self.sample_rate,
                     self.playback.gain,
