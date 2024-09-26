@@ -155,10 +155,7 @@ fn set_tempo(tempo: i64, tick_len: &mut i64, sample_rate: i64) {
     *tick_len = ((sample_rate << 1) + (sample_rate >> 1)) / tempo;
 }
 fn update_frequency(chan: &mut Channel, sample_rate: i64, gain: i64, c2_rate: i64) {
-    let mut period;
-    let mut volume;
-
-    period = i64::from(i32::from(chan.period) + i32::from(chan.vibrato_add));
+    let mut period = i64::from(i32::from(chan.period) + i32::from(chan.vibrato_add));
     period = (period * i64::from(consts::ARP_TUNING[chan.arpeggio_add as usize])) >> 11;
     period = (period >> 1) + (period & 1);
     if period < 14 {
@@ -166,14 +163,12 @@ fn update_frequency(chan: &mut Channel, sample_rate: i64, gain: i64, c2_rate: i6
     }
     let freq = (c2_rate * 428 / period) as u64;
     chan.step = (freq << 14).wrapping_div(sample_rate as u64) as usize;
-    volume = i64::from(i32::from(chan.volume) + i32::from(chan.tremolo_add));
+    let mut volume = i64::from(i32::from(chan.volume) + i32::from(chan.tremolo_add));
     volume = volume.clamp(0, 64);
     chan.ampl = ((volume * gain) >> 5) as u8;
 }
 fn tone_portamento(chan: &mut Channel) {
-    let mut source;
-
-    source = i64::from(chan.period);
+    let mut source = i64::from(chan.period);
     let dest = i64::from(chan.porta_period);
     match source.cmp(&dest) {
         Ordering::Less => {
@@ -193,8 +188,7 @@ fn tone_portamento(chan: &mut Channel) {
     chan.period = source as u16;
 }
 fn volume_slide(chan: &mut Channel, param: i64) {
-    let mut volume;
-    volume = i64::from(chan.volume) + (param >> 4) - (param & 0xf);
+    let mut volume = i64::from(chan.volume) + (param >> 4) - (param & 0xf);
     volume = volume.clamp(0, 64);
     chan.volume = volume as u8;
 }
@@ -238,8 +232,6 @@ fn tremolo(chan: &mut Channel, random_seed: &mut i64) {
         >> 6) as i8;
 }
 fn trigger(channel: &mut Channel, instruments: &[Instrument]) {
-    let period;
-
     let ins = i64::from(channel.note.instrument);
     if ins > 0 && ins < 32 {
         channel.assigned = ins as u8;
@@ -256,7 +248,7 @@ fn trigger(channel: &mut Channel, instruments: &[Instrument]) {
         channel.fine_tune = channel.note.param;
     }
     if channel.note.key > 0 {
-        period = i64::from(
+        let period = i64::from(
             (i32::from(channel.note.key)
                 * i32::from(consts::FINE_TUNING[(i32::from(channel.fine_tune) & 0xf) as usize]))
                 >> 11,
@@ -276,8 +268,6 @@ fn trigger(channel: &mut Channel, instruments: &[Instrument]) {
     }
 }
 fn channel_row(chan: &mut Channel, sample_rate: i64, src: &ModSrc, playback: &mut PlaybackState) {
-    let volume;
-    let period;
     let effect = i64::from(chan.note.effect);
     let param = i64::from(chan.note.param);
     chan.fx_count = 0;
@@ -350,11 +340,11 @@ fn channel_row(chan: &mut Channel, sample_rate: i64, src: &ModSrc, playback: &mu
             }
         }
         17 => {
-            period = i64::from(chan.period) - param;
+            let period = i64::from(chan.period) - param;
             chan.period = (if period < 0 { 0 } else { period }) as u16;
         }
         18 => {
-            period = i64::from(chan.period) + param;
+            let period = i64::from(chan.period) + param;
             chan.period = (if period > 65535 { 65535 } else { period }) as u16;
         }
         20 => {
@@ -387,11 +377,11 @@ fn channel_row(chan: &mut Channel, sample_rate: i64, src: &ModSrc, playback: &mu
             }
         }
         26 => {
-            volume = i64::from(chan.volume) + param;
+            let volume = i64::from(chan.volume) + param;
             chan.volume = (if volume > 64 { 64 } else { volume }) as u8;
         }
         27 => {
-            volume = i64::from(chan.volume) - param;
+            let volume = i64::from(chan.volume) - param;
             chan.volume = (if volume < 0 { 0 } else { volume }) as u8;
         }
         28 => {
@@ -414,17 +404,16 @@ fn channel_tick(
     random_seed: &mut i64,
     instruments: &[Instrument],
 ) {
-    let period;
     let effect = i64::from(chan.note.effect);
     let param = i64::from(chan.note.param);
     chan.fx_count = chan.fx_count.wrapping_add(1);
     match effect {
         1 => {
-            period = i64::from(chan.period) - param;
+            let period = i64::from(chan.period) - param;
             chan.period = (if period < 0 { 0 } else { period }) as u16;
         }
         2 => {
-            period = i64::from(chan.period) + param;
+            let period = i64::from(chan.period) + param;
             chan.period = (if period > 65535 { 65535 } else { period }) as u16;
         }
         3 => {
@@ -498,11 +487,6 @@ fn sequence_row(
     }: &mut MmC2r,
 ) -> bool {
     let mut song_end = false;
-    let mut chan_idx;
-    let mut pat_offset;
-    let mut effect;
-    let mut param;
-    let mut note;
     if playback.next_row < 0 {
         playback.break_pattern = playback.pattern + 1;
         playback.next_row = 0;
@@ -516,7 +500,7 @@ fn sequence_row(
             song_end = true;
         }
         playback.pattern = playback.break_pattern;
-        chan_idx = 0;
+        let mut chan_idx = 0;
         while chan_idx < src.num_channels {
             channels[chan_idx as usize].pl_row = 0;
             chan_idx += 1;
@@ -528,13 +512,13 @@ fn sequence_row(
     if playback.next_row >= 64 {
         playback.next_row = -1;
     }
-    pat_offset = (i64::from(i32::from(src.sequence[playback.pattern as usize]) * 64)
+    let mut pat_offset = (i64::from(i32::from(src.sequence[playback.pattern as usize]) * 64)
         + playback.row)
         * src.num_channels
         * 4;
-    chan_idx = 0;
+    let mut chan_idx = 0;
     while chan_idx < src.num_channels {
-        note = &mut (channels[chan_idx as usize]).note;
+        let note = &mut (channels[chan_idx as usize]).note;
         let pattern_data = src.pattern_data;
         note.key = ((i32::from(pattern_data[pat_offset as usize]) & 0xf) << 8) as u16;
         note.key =
@@ -542,8 +526,8 @@ fn sequence_row(
         note.instrument = (i32::from(pattern_data[(pat_offset + 2) as usize]) >> 4) as u8;
         note.instrument = (i32::from(note.instrument)
             | i32::from(pattern_data[pat_offset as usize]) & 0x10) as u8;
-        effect = i64::from(i32::from(pattern_data[(pat_offset + 2) as usize]) & 0xf);
-        param = i64::from(pattern_data[(pat_offset + 3) as usize]);
+        let mut effect = i64::from(i32::from(pattern_data[(pat_offset + 2) as usize]) & 0xf);
+        let mut param = i64::from(pattern_data[(pat_offset + 3) as usize]);
         pat_offset += 4;
         if effect == 0xe {
             effect = 0x10 | param >> 4;
@@ -594,7 +578,6 @@ fn resample(
     count: i64,
     instruments: &[Instrument],
 ) {
-    let mut epos;
     let mut buf_idx: usize = (offset << 1) as usize;
     let buf_end: usize = ((offset + count) << 1) as usize;
     let mut sidx: usize = chan.sample_idx;
@@ -619,7 +602,7 @@ fn resample(
                 sidx = sidx.wrapping_sub(llen);
             }
         }
-        epos = sidx.wrapping_add((buf_end.wrapping_sub(buf_idx) >> 1).wrapping_mul(step));
+        let mut epos = sidx.wrapping_add((buf_end.wrapping_sub(buf_idx) >> 1).wrapping_mul(step));
         if lamp != 0 || ramp != 0 {
             if epos > lep1 {
                 epos = lep1;
@@ -799,13 +782,10 @@ impl MmC2r<'_> {
     /// Calculate the length of the module file... In samples. Presumably.
     pub fn calculate_mod_file_len(&self) -> Option<i64> {
         let module_header = self.src.module_data;
-        let mut length;
-
-        let mut inst_idx;
         let numchan = calculate_num_channels(bytemuck::cast_slice(module_header))?;
-        length =
+        let mut length =
             1084 + 4 * numchan * 64 * calculate_num_patterns(bytemuck::cast_slice(module_header));
-        inst_idx = 1;
+        let mut inst_idx = 1;
         while inst_idx < 32 {
             length +=
                 unsigned_short_big_endian(bytemuck::cast_slice(module_header), inst_idx * 30 + 12)
@@ -817,8 +797,7 @@ impl MmC2r<'_> {
     }
     /// Calculate the song duration... Okay.
     pub fn calculate_song_duration(&mut self) -> i64 {
-        let mut duration;
-        duration = 0;
+        let mut duration = 0;
         if self.src.num_channels > 0 {
             micromod_set_position(0, self);
             let mut song_end = false;
@@ -832,9 +811,8 @@ impl MmC2r<'_> {
     }
     /// Mute a channel.
     pub fn mute_channel(&mut self, channel: i64) -> i64 {
-        let mut chan_idx;
         if channel < 0 {
-            chan_idx = 0;
+            let mut chan_idx = 0;
             while chan_idx < self.src.num_channels {
                 self.channels[chan_idx as usize].mute = 0;
                 chan_idx += 1;
@@ -851,8 +829,6 @@ impl MmC2r<'_> {
 }
 
 fn micromod_set_position(mut pos: i64, state: &mut MmC2r) {
-    let mut chan_idx;
-    let mut chan;
     if state.src.num_channels <= 0 {
         return;
     }
@@ -867,9 +843,9 @@ fn micromod_set_position(mut pos: i64, state: &mut MmC2r) {
     state.playback.pl_channel = -1;
     state.playback.pl_count = state.playback.pl_channel;
     state.playback.random_seed = 0xabcdef;
-    chan_idx = 0;
+    let mut chan_idx = 0;
     while chan_idx < state.src.num_channels {
-        chan = &mut state.channels[chan_idx as usize];
+        let chan = &mut state.channels[chan_idx as usize];
         chan.id = chan_idx as u8;
         chan.assigned = 0;
         chan.instrument = 0;
