@@ -706,7 +706,7 @@ impl MmC2r<'_> {
         mm.playback.c2_rate = if mm.src.num_channels > 4 { 8363 } else { 8287 };
         mm.playback.gain = if mm.src.num_channels > 4 { 32 } else { 64 };
         mm.unmute_all();
-        micromod_set_position(0, &mut mm);
+        mm.set_position(0);
         Ok(mm)
     }
     /// Fill a buffer with delicious samples
@@ -767,13 +767,13 @@ impl MmC2r<'_> {
             0
         } else {
             let mut duration = 0;
-            micromod_set_position(0, self);
+            self.set_position(0);
             let mut song_end = false;
             while !song_end {
                 duration += self.playback.tick_len;
                 song_end = sequence_tick(self);
             }
-            micromod_set_position(0, self);
+            self.set_position(0);
             duration
         }
     }
@@ -793,38 +793,37 @@ impl MmC2r<'_> {
     pub fn set_gain(&mut self, value: i32) {
         self.playback.gain = value;
     }
-}
-
-fn micromod_set_position(mut pos: i32, mm: &mut MmC2r) {
-    if mm.channels.is_empty() {
-        return;
-    }
-    if pos >= mm.src.song_length {
-        pos = 0;
-    }
-    mm.playback.break_pattern = pos;
-    mm.playback.next_row = 0;
-    mm.playback.tick = 1;
-    mm.playback.speed = 6;
-    set_tempo(125, &mut mm.playback.tick_len, mm.sample_rate);
-    mm.playback.pl_channel = -1;
-    mm.playback.pl_count = mm.playback.pl_channel;
-    mm.playback.random_seed = 0xabcdef;
-    for (i, chan) in mm.channels.iter_mut().enumerate() {
-        chan.id = i as u8;
-        chan.assigned = 0;
-        chan.instrument = 0;
-        chan.volume = 0;
-        match i & 0x3 {
-            0 | 3 => {
-                chan.panning = 0;
-            }
-            1 | 2 => {
-                chan.panning = 127;
-            }
-            _ => {}
+    fn set_position(&mut self, mut pos: i32) {
+        if self.channels.is_empty() {
+            return;
         }
+        if pos >= self.src.song_length {
+            pos = 0;
+        }
+        self.playback.break_pattern = pos;
+        self.playback.next_row = 0;
+        self.playback.tick = 1;
+        self.playback.speed = 6;
+        set_tempo(125, &mut self.playback.tick_len, self.sample_rate);
+        self.playback.pl_channel = -1;
+        self.playback.pl_count = self.playback.pl_channel;
+        self.playback.random_seed = 0xabcdef;
+        for (i, chan) in self.channels.iter_mut().enumerate() {
+            chan.id = i as u8;
+            chan.assigned = 0;
+            chan.instrument = 0;
+            chan.volume = 0;
+            match i & 0x3 {
+                0 | 3 => {
+                    chan.panning = 0;
+                }
+                1 | 2 => {
+                    chan.panning = 127;
+                }
+                _ => {}
+            }
+        }
+        sequence_tick(self);
+        self.playback.tick_offset = 0;
     }
-    sequence_tick(mm);
-    mm.playback.tick_offset = 0;
 }
