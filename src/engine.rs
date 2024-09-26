@@ -1,5 +1,5 @@
 use crate::{
-    calculate_num_channels, calculate_num_patterns, resample, sequence_tick,
+    resample, sequence_tick,
     slice_ext::ByteSliceExt as _,
     types::{Channel, Instrument, ModSrc, PlaybackState},
 };
@@ -15,7 +15,7 @@ pub struct Engine<'src> {
 impl Engine<'_> {
     /// Create a new micromod decoder apparatus.
     pub fn new(data: &[u8], sample_rate: i32) -> Result<Engine, InitError> {
-        let num_channels = match calculate_num_channels(data) {
+        let num_channels = match crate::parse::calculate_num_channels(data) {
             Some(num_channels) => num_channels,
             None => return Err(InitError::ChannelNumIncorrect),
         };
@@ -39,7 +39,7 @@ impl Engine<'_> {
             },
             playback: PlaybackState::default(),
         };
-        mm.src.num_patterns = calculate_num_patterns(data).into();
+        mm.src.num_patterns = crate::parse::calculate_num_patterns(data).into();
         let mut sample_data_offset = 1084 + mm.src.num_patterns * 64 * mm.src.num_channels * 4;
         let mut inst_idx = 1;
         // First instrument is an unused dummy instrument
@@ -132,11 +132,15 @@ impl Engine<'_> {
     /// Calculate the length of the module file... In samples. Presumably.
     pub fn calculate_mod_file_len(&self) -> Option<u32> {
         let module_header = self.src.module_data;
-        let numchan = u32::from(calculate_num_channels(bytemuck::cast_slice(module_header))?);
+        let numchan = u32::from(crate::parse::calculate_num_channels(bytemuck::cast_slice(
+            module_header,
+        ))?);
         let mut length = 1084
             + 4 * numchan
                 * 64
-                * u32::from(calculate_num_patterns(bytemuck::cast_slice(module_header)));
+                * u32::from(crate::parse::calculate_num_patterns(bytemuck::cast_slice(
+                    module_header,
+                )));
         let mut inst_idx = 1;
         while inst_idx < 32 {
             length += u32::from(
