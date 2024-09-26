@@ -210,14 +210,12 @@ fn waveform(phase: u8, type_: u8, random_seed: &mut i32) -> i16 {
     amplitude
 }
 fn vibrato(chan: &mut Channel, random_seed: &mut i32) {
-    chan.vibrato_add = ((waveform(chan.vibrato_phase, chan.vibrato_type, random_seed)
-        * i16::from(chan.vibrato_depth))
-        >> 7) as i8;
+    let amp = waveform(chan.vibrato_phase, chan.vibrato_type, random_seed);
+    chan.vibrato_add = ((amp * i16::from(chan.vibrato_depth)) >> 7) as i8;
 }
 fn tremolo(chan: &mut Channel, random_seed: &mut i32) {
-    chan.tremolo_add = ((waveform(chan.tremolo_phase, chan.tremolo_type, random_seed)
-        * i16::from(chan.tremolo_depth))
-        >> 6) as i8;
+    let amp = waveform(chan.tremolo_phase, chan.tremolo_type, random_seed);
+    chan.tremolo_add = ((amp * i16::from(chan.tremolo_depth)) >> 6) as i8;
 }
 fn trigger(channel: &mut Channel, instruments: &[Instrument]) {
     let ins = i32::from(channel.note.instrument);
