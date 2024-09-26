@@ -146,8 +146,8 @@ fn calculate_num_channels(module_header: &[u8]) -> Option<i64> {
         Some(numchan)
     }
 }
-fn unsigned_short_big_endian(buf: &[u8], offset: usize) -> i64 {
-    i64::from(u16::from_be_bytes(
+fn unsigned_short_big_endian(buf: &[u8], offset: usize) -> u64 {
+    u64::from(u16::from_be_bytes(
         buf[offset..offset + 2].try_into().unwrap(),
     ))
 }
@@ -737,10 +737,10 @@ impl MmC2r<'_> {
                 loop_start = sample_length;
                 loop_length = 0;
             }
-            let loop_start = (loop_start << 14) as u64;
-            let loop_length = (loop_length << 14) as u64;
+            let loop_start = loop_start << 14;
+            let loop_length = loop_length << 14;
             let sample_data = &bytemuck::cast_slice::<u8, i8>(data)[sample_data_offset as usize..];
-            sample_data_offset += sample_length;
+            sample_data_offset += sample_length as i64;
             inst_idx += 1;
             state.src.instruments.push(Instrument {
                 volume,
@@ -811,6 +811,7 @@ impl MmC2r<'_> {
         while inst_idx < 32 {
             length +=
                 unsigned_short_big_endian(bytemuck::cast_slice(module_header), inst_idx * 30 + 12)
+                    as i64
                     * 2;
             inst_idx += 1;
         }
