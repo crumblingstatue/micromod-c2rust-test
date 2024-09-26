@@ -502,9 +502,8 @@ fn sequence_row(
     let mut pat_offset = ((i32::from(src.sequence[playback.pattern as usize]) * 64) + playback.row)
         * src.num_channels
         * 4;
-    let mut chan_idx = 0;
-    while chan_idx < src.num_channels {
-        let note = &mut (channels[chan_idx as usize]).note;
+    for chan in channels {
+        let note = &mut chan.note;
         let pattern_data = src.pattern_data;
         note.key = ((i32::from(pattern_data[pat_offset as usize]) & 0xf) << 8) as u16;
         note.key =
@@ -524,13 +523,7 @@ fn sequence_row(
         }
         note.effect = effect as u8;
         note.param = param as u8;
-        channel_row(
-            &mut channels[chan_idx as usize],
-            *sample_rate,
-            src,
-            playback,
-        );
-        chan_idx += 1;
+        channel_row(chan, *sample_rate, src, playback);
     }
     song_end
 }
