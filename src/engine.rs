@@ -44,26 +44,14 @@ impl Engine<'_> {
         // First instrument is an unused dummy instrument
         mm.src.instruments.push(Instrument::dummy());
         while inst_idx < 32 {
-            let sample_length = u32::from(
-                bytemuck::cast_slice(mm.src.module_data)
-                    .read_u16_be(inst_idx * 30 + 12)
-                    .unwrap(),
-            ) * 2;
+            let sample_length = u32::from(data.read_u16_be(inst_idx * 30 + 12).unwrap()) * 2;
             let fine_tune = i32::from(mm.src.module_data[inst_idx * 30 + 14]) & 0xf;
             let fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
             let volume = i32::from(mm.src.module_data[inst_idx * 30 + 15]) & 0x7f;
             let volume = (if volume > 64 { 64 } else { volume }) as u8;
 
-            let mut loop_start = u32::from(
-                bytemuck::cast_slice(mm.src.module_data)
-                    .read_u16_be(inst_idx * 30 + 16)
-                    .unwrap(),
-            ) * 2;
-            let mut loop_length = u32::from(
-                bytemuck::cast_slice(mm.src.module_data)
-                    .read_u16_be(inst_idx * 30 + 18)
-                    .unwrap(),
-            ) * 2;
+            let mut loop_start = u32::from(data.read_u16_be(inst_idx * 30 + 16).unwrap()) * 2;
+            let mut loop_length = u32::from(data.read_u16_be(inst_idx * 30 + 18).unwrap()) * 2;
 
             if loop_start + loop_length > sample_length {
                 if loop_start / 2 + loop_length <= sample_length {
@@ -78,7 +66,7 @@ impl Engine<'_> {
             }
             let loop_start = loop_start << 14;
             let loop_length = loop_length << 14;
-            let sample_data = &bytemuck::cast_slice::<u8, i8>(data)[sample_data_offset as usize..];
+            let sample_data = &mm.src.module_data[sample_data_offset as usize..];
             sample_data_offset += sample_length as i32;
             inst_idx += 1;
             mm.src.instruments.push(Instrument {
