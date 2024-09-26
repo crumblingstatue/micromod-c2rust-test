@@ -125,7 +125,7 @@ fn calculate_num_patterns(module_header: &[u8]) -> i64 {
     num_patterns_0
 }
 
-fn calculate_num_channels(module_header: &[i8]) -> Option<i64> {
+fn calculate_num_channels(module_header: &[u8]) -> Option<i64> {
     const MAX_CHANNELS: i64 = 16;
     let numchan: i64 = match (i64::from(module_header[1082]) << 8) | i64::from(module_header[1083])
     {
@@ -801,7 +801,7 @@ impl MmC2r<'_> {
         let mut length;
 
         let mut inst_idx;
-        let numchan = calculate_num_channels(module_header)?;
+        let numchan = calculate_num_channels(bytemuck::cast_slice(module_header))?;
         length =
             1084 + 4 * numchan * 64 * calculate_num_patterns(bytemuck::cast_slice(module_header));
         inst_idx = 1;
