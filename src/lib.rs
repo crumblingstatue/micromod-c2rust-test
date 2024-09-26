@@ -164,10 +164,10 @@ fn unsigned_short_big_endian(buf: &[i8], offset: i64) -> i64 {
     ((buf[offset as usize] as i32 & 0xff_i32) << 8 | buf[(offset + 1) as usize] as i32 & 0xff_i32)
         as i64
 }
-fn set_tempo(tempo: i64, tick_len: &mut i64, sample_rate: &mut i64) {
-    *tick_len = ((*sample_rate << 1) + (*sample_rate >> 1)) / tempo;
+fn set_tempo(tempo: i64, tick_len: &mut i64, sample_rate: i64) {
+    *tick_len = ((sample_rate << 1) + (sample_rate >> 1)) / tempo;
 }
-fn update_frequency(chan: &mut Channel, sample_rate: &mut i64, gain: &mut i64, c2_rate: &mut i64) {
+fn update_frequency(chan: &mut Channel, sample_rate: i64, gain: &mut i64, c2_rate: &mut i64) {
     let mut period;
     let mut volume;
 
@@ -178,7 +178,7 @@ fn update_frequency(chan: &mut Channel, sample_rate: &mut i64, gain: &mut i64, c
         period = 6848;
     }
     let freq = (*c2_rate * 428 / period) as u64;
-    chan.step = (freq << 14).wrapping_div(*sample_rate as u64);
+    chan.step = (freq << 14).wrapping_div(sample_rate as u64);
     volume = (chan.volume as i32 + chan.tremolo_add as i32) as i64;
     volume = volume.clamp(0, 64);
     chan.ampl = ((volume * *gain) >> 5) as u8;
@@ -284,7 +284,7 @@ fn trigger(channel: &mut Channel, instruments: &[Instrument]) {
 }
 fn channel_row(
     chan: &mut Channel,
-    sample_rate: &mut i64,
+    sample_rate: i64,
     gain: &mut i64,
     c2_rate: &mut i64,
     tick_len: &mut i64,
@@ -434,7 +434,7 @@ fn channel_row(
 }
 fn channel_tick(
     chan: &mut Channel,
-    sample_rate: &mut i64,
+    sample_rate: i64,
     gain: &mut i64,
     c2_rate: &mut i64,
     random_seed: &mut i64,
@@ -575,7 +575,7 @@ fn sequence_row(state: &mut MmC2r) -> bool {
         note.param = param as u8;
         channel_row(
             &mut state.channels[chan_idx as usize],
-            &mut state.sample_rate,
+            state.sample_rate,
             &mut state.gain,
             &mut state.c2_rate,
             &mut state.tick_len,
@@ -606,7 +606,7 @@ fn sequence_tick(state: &mut MmC2r) -> bool {
         while chan_idx < state.src.num_channels {
             channel_tick(
                 &mut state.channels[chan_idx as usize],
-                &mut state.sample_rate,
+                state.sample_rate,
                 &mut state.gain,
                 &mut state.c2_rate,
                 &mut state.random_seed,
@@ -895,7 +895,7 @@ fn micromod_set_position(mut pos: i64, state: &mut MmC2r) {
     state.next_row = 0;
     state.tick = 1;
     state.speed = 6;
-    set_tempo(125, &mut state.tick_len, &mut state.sample_rate);
+    set_tempo(125, &mut state.tick_len, state.sample_rate);
     state.pl_channel = -1;
     state.pl_count = state.pl_channel;
     state.random_seed = 0xabcdef;
