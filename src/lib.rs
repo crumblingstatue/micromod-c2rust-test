@@ -186,7 +186,7 @@ fn volume_slide(chan: &mut Channel, param: i32) {
     volume = volume.clamp(0, 64);
     chan.volume = volume as u8;
 }
-fn waveform(phase: i32, type_: u8, random_seed: &mut i32) -> i32 {
+fn waveform(phase: i16, type_: u8, random_seed: &mut i32) -> i16 {
     let mut amplitude: i32 = 0;
     match type_ & 0x3 {
         0 => {
@@ -196,10 +196,10 @@ fn waveform(phase: i32, type_: u8, random_seed: &mut i32) -> i32 {
             }
         }
         1 => {
-            amplitude = 255 - (((phase + 0x20) & 0x3f) << 3);
+            amplitude = 255 - (((i32::from(phase) + 0x20) & 0x3f) << 3);
         }
         2 => {
-            amplitude = 255 - ((phase & 0x20) << 4);
+            amplitude = 255 - ((i32::from(phase) & 0x20) << 4);
         }
         3 => {
             amplitude = (*random_seed >> 20) - 255;
@@ -207,22 +207,22 @@ fn waveform(phase: i32, type_: u8, random_seed: &mut i32) -> i32 {
         }
         _ => {}
     }
-    amplitude
+    amplitude as i16
 }
 fn vibrato(chan: &mut Channel, random_seed: &mut i32) {
     chan.vibrato_add = ((waveform(
-        i32::from(chan.vibrato_phase),
+        i16::from(chan.vibrato_phase),
         chan.vibrato_type,
         random_seed,
-    ) * i32::from(chan.vibrato_depth))
+    ) * i16::from(chan.vibrato_depth))
         >> 7) as i8;
 }
 fn tremolo(chan: &mut Channel, random_seed: &mut i32) {
     chan.tremolo_add = ((waveform(
-        i32::from(chan.tremolo_phase),
+        i16::from(chan.tremolo_phase),
         chan.tremolo_type,
         random_seed,
-    ) * i32::from(chan.tremolo_depth))
+    ) * i16::from(chan.tremolo_depth))
         >> 6) as i8;
 }
 fn trigger(channel: &mut Channel, instruments: &[Instrument]) {
