@@ -113,11 +113,11 @@ pub struct MmC2r<'src> {
     playback: PlaybackState,
 }
 
-fn calculate_num_patterns(module_header: &[u8]) -> i32 {
+fn calculate_num_patterns(module_header: &[u8]) -> u16 {
     let mut num = 0;
     let mut i = 0;
     while i < 128 {
-        let order_entry = i32::from(module_header[(952 + i) as usize]) & 0x7f;
+        let order_entry = u16::from(module_header[(952 + i) as usize]) & 0x7f;
         if order_entry >= num {
             num = order_entry + 1;
         }
@@ -696,7 +696,7 @@ impl MmC2r<'_> {
             },
             playback: PlaybackState::default(),
         };
-        mm.src.num_patterns = calculate_num_patterns(data);
+        mm.src.num_patterns = calculate_num_patterns(data).into();
         let mut sample_data_offset = 1084 + mm.src.num_patterns * 64 * mm.src.num_channels * 4;
         let mut inst_idx = 1;
         // First instrument is an unused dummy instrument
@@ -792,8 +792,10 @@ impl MmC2r<'_> {
     pub fn calculate_mod_file_len(&self) -> Option<i32> {
         let module_header = self.src.module_data;
         let numchan = i32::from(calculate_num_channels(bytemuck::cast_slice(module_header))?);
-        let mut length =
-            1084 + 4 * numchan * 64 * calculate_num_patterns(bytemuck::cast_slice(module_header));
+        let mut length = 1084
+            + 4 * numchan
+                * 64
+                * i32::from(calculate_num_patterns(bytemuck::cast_slice(module_header)));
         let mut inst_idx = 1;
         while inst_idx < 32 {
             length += i32::from(
