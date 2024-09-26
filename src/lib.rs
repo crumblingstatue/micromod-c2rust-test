@@ -186,9 +186,9 @@ fn volume_slide(chan: &mut Channel, param: i32) {
     volume = volume.clamp(0, 64);
     chan.volume = volume as u8;
 }
-fn waveform(phase: i32, type_0: i32, random_seed: &mut i32) -> i32 {
+fn waveform(phase: i32, type_: u8, random_seed: &mut i32) -> i32 {
     let mut amplitude: i32 = 0;
-    match type_0 & 0x3 {
+    match type_ & 0x3 {
         0 => {
             amplitude = i32::from(consts::SINE_TABLE[(phase & 0x1f) as usize]);
             if phase & 0x20 > 0 {
@@ -212,7 +212,7 @@ fn waveform(phase: i32, type_0: i32, random_seed: &mut i32) -> i32 {
 fn vibrato(chan: &mut Channel, random_seed: &mut i32) {
     chan.vibrato_add = ((waveform(
         i32::from(chan.vibrato_phase),
-        i32::from(chan.vibrato_type),
+        chan.vibrato_type,
         random_seed,
     ) * i32::from(chan.vibrato_depth))
         >> 7) as i8;
@@ -220,7 +220,7 @@ fn vibrato(chan: &mut Channel, random_seed: &mut i32) {
 fn tremolo(chan: &mut Channel, random_seed: &mut i32) {
     chan.tremolo_add = ((waveform(
         i32::from(chan.tremolo_phase),
-        i32::from(chan.tremolo_type),
+        chan.tremolo_type,
         random_seed,
     ) * i32::from(chan.tremolo_depth))
         >> 6) as i8;
