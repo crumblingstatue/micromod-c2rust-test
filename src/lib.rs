@@ -1,6 +1,6 @@
 //! Experiment with converting [Micromod](https://github.com/martincameron/micromod) with
 //! [c2rust](https://c2rust.com/).
-//! 
+//!
 //! Safetyfication done manually
 
 #![warn(missing_docs)]
@@ -241,7 +241,7 @@ fn tremolo(chan: &mut Channel, random_seed: &mut i64) {
     ) * chan.tremolo_depth as i64)
         >> 6) as i8;
 }
-fn trigger(channel: &mut Channel, instruments: &mut [Instrument]) {
+fn trigger(channel: &mut Channel, instruments: &[Instrument]) {
     let period;
 
     let ins = channel.note.instrument as i64;
@@ -292,7 +292,7 @@ fn channel_row(
     pl_count: &mut i64,
     pl_channel: &mut i64,
     random_seed: &mut i64,
-    instruments: &mut [Instrument],
+    instruments: &[Instrument],
     num_channels: &mut i64,
 ) {
     let volume;
@@ -434,7 +434,7 @@ fn channel_tick(
     gain: &mut i64,
     c2_rate: &mut i64,
     random_seed: &mut i64,
-    instruments: &mut [Instrument],
+    instruments: &[Instrument],
 ) {
     let period;
     let effect = chan.note.effect as i64;
@@ -584,7 +584,7 @@ fn sequence_row(state: &mut MmC2r) -> bool {
             &mut state.pl_count,
             &mut state.pl_channel,
             &mut state.random_seed,
-            &mut state.instruments,
+            &state.instruments,
             &mut state.num_channels,
         );
         chan_idx += 1;
@@ -607,7 +607,7 @@ fn sequence_tick(state: &mut MmC2r) -> bool {
                 &mut state.gain,
                 &mut state.c2_rate,
                 &mut state.random_seed,
-                &mut state.instruments,
+                &state.instruments,
             );
             chan_idx += 1;
         }
@@ -619,7 +619,7 @@ fn resample(
     buf: &mut [i16],
     offset: i64,
     count: i64,
-    instruments: &mut [Instrument],
+    instruments: &[Instrument],
 ) {
     let mut epos;
     let mut buf_idx: u64 = (offset << 1) as u64;
@@ -803,7 +803,7 @@ impl MmC2r<'_> {
                     output_buffer,
                     offset,
                     remain,
-                    &mut self.instruments,
+                    &self.instruments,
                 );
                 chan_idx += 1;
             }
@@ -823,7 +823,7 @@ impl MmC2r<'_> {
     pub fn calculate_mod_file_len(&self) -> i64 {
         let module_header = self.module_data;
         let mut length;
-    
+
         let mut inst_idx;
         let numchan = calculate_num_channels(module_header);
         if numchan <= 0 {
