@@ -618,7 +618,7 @@ fn sequence_tick(state: &mut State) -> i64 {
     }
     song_end
 }
-unsafe fn resample(
+fn resample(
     chan: &mut Channel,
     buf: &mut [i16],
     offset: i64,
@@ -632,7 +632,7 @@ unsafe fn resample(
     let step: u64 = chan.step;
     let llen: u64 = instruments[chan.instrument as usize].loop_length;
     let lep1: u64 = (instruments[chan.instrument as usize].loop_start).wrapping_add(llen);
-    let sdat: *const i8 = instruments[chan.instrument as usize].sample_data.as_ptr();
+    let sdat = instruments[chan.instrument as usize].sample_data;
     let mut ampl: i16 = (if chan.mute == 0 { chan.ampl as i32 } else { 0 }) as i16;
     let lamp: i16 = ((ampl as i32 * (127_i32 - chan.panning as i32)) >> 5) as i16;
     let ramp: i16 = ((ampl as i32 * chan.panning as i32) >> 5) as i16;
@@ -654,7 +654,7 @@ unsafe fn resample(
             }
             if lamp as i32 != 0 && ramp as i32 != 0 {
                 while sidx < epos {
-                    ampl = *sdat.offset((sidx >> 14) as isize) as i16;
+                    ampl = sdat[(sidx >> 14) as usize] as i16;
                     let fresh9 = buf_idx;
                     buf_idx = buf_idx.wrapping_add(1);
                     let fresh10 = &mut (buf[fresh9 as usize]);
@@ -671,9 +671,8 @@ unsafe fn resample(
                 }
                 while sidx < epos {
                     let fresh13 = &mut (buf[buf_idx as usize]);
-                    *fresh13 = (*fresh13 as i32
-                        + *sdat.offset((sidx >> 14) as isize) as i32 * ampl as i32)
-                        as i16;
+                    *fresh13 =
+                        (*fresh13 as i32 + sdat[(sidx >> 14) as usize] as i32 * ampl as i32) as i16;
                     buf_idx = buf_idx.wrapping_add(2);
                     sidx = sidx.wrapping_add(step);
                 }
@@ -691,7 +690,7 @@ pub fn micromod_get_version() -> &'static str {
     MICROMOD_VERSION
 }
 
-pub unsafe fn micromod_calculate_mod_file_len(module_header: &[i8]) -> i64 {
+pub fn micromod_calculate_mod_file_len(module_header: &[i8]) -> i64 {
     let mut length;
 
     let mut inst_idx;
@@ -715,7 +714,7 @@ pub enum InitError {
 }
 
 impl State<'_> {
-    pub unsafe fn init(data: &[u8], sample_rate: i64) -> Result<State, InitError> {
+    pub fn init(data: &[u8], sample_rate: i64) -> Result<State, InitError> {
         let num_channels = calculate_num_channels(bytemuck::cast_slice(data));
         if num_channels <= 0 {
             return Err(InitError::ChannelNumIncorrect);
@@ -900,7 +899,7 @@ pub fn micromod_set_gain(value: i64, state: &mut State) {
     state.gain = value;
 }
 
-pub unsafe fn micromod_get_audio(output_buffer: &mut [i16], mut count: i64, state: &mut State) {
+pub fn micromod_get_audio(output_buffer: &mut [i16], mut count: i64, state: &mut State) {
     let mut offset;
     let mut remain;
     let mut chan_idx;
@@ -940,14 +939,12 @@ fn main() {
     let mod_data = std::fs::read(std::env::args_os().nth(1).unwrap()).unwrap();
     let output_file = std::fs::File::create("output.pcm").unwrap();
     let mut writer = BufWriter::new(output_file);
-    unsafe {
-        let mut state = State::init(&mod_data, 48_000).unwrap();
-        for _ in 0..1000 {
-            let mut out = [0; 4096];
-            micromod_get_audio(&mut out, 2048, &mut state);
-            for sample in out {
-                writer.write_all(sample.to_le_bytes().as_slice()).unwrap();
-            }
+    let mut state = State::init(&mod_data, 48_000).unwrap();
+    for _ in 0..1000 {
+        let mut out = [0; 4096];
+        micromod_get_audio(&mut out, 2048, &mut state);
+        for sample in out {
+            writer.write_all(sample.to_le_bytes().as_slice()).unwrap();
         }
     }
 }
