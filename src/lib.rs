@@ -677,7 +677,7 @@ pub enum InitError {
 impl MmC2r<'_> {
     /// Create a new micromod decoder apparatus.
     pub fn new(data: &[u8], sample_rate: i64) -> Result<MmC2r, InitError> {
-        let num_channels = match calculate_num_channels(bytemuck::cast_slice(data)) {
+        let num_channels = match calculate_num_channels(data) {
             Some(num_channels) => num_channels,
             None => return Err(InitError::ChannelNumIncorrect),
         };
@@ -701,8 +701,7 @@ impl MmC2r<'_> {
             },
             playback: PlaybackState::default(),
         };
-        state.src.num_patterns =
-            calculate_num_patterns(bytemuck::cast_slice(state.src.module_data));
+        state.src.num_patterns = calculate_num_patterns(data);
         let mut sample_data_offset =
             1084 + state.src.num_patterns * 64 * state.src.num_channels * 4;
         let mut inst_idx = 1;
