@@ -79,9 +79,8 @@ struct ModSrc<'src> {
     song_length: i64,
 }
 
-/// A micromod decoding instance thingy.
-pub struct MmC2r<'src> {
-    sample_rate: i64,
+#[derive(Default)]
+struct PlaybackState {
     gain: i64,
     c2_rate: i64,
     tick_len: i64,
@@ -95,8 +94,14 @@ pub struct MmC2r<'src> {
     pl_count: i64,
     pl_channel: i64,
     random_seed: i64,
+}
+
+/// A micromod decoding instance thingy.
+pub struct MmC2r<'src> {
+    sample_rate: i64,
     channels: [Channel; 16],
     src: ModSrc<'src>,
+    playback: PlaybackState,
 }
 
 fn calculate_num_patterns(module_header: &[i8]) -> i64 {
@@ -519,32 +524,33 @@ fn sequence_row(state: &mut MmC2r) -> bool {
     let mut effect;
     let mut param;
     let mut note;
-    if state.next_row < 0 {
-        state.break_pattern = state.pattern + 1;
-        state.next_row = 0;
+    if state.playback.next_row < 0 {
+        state.playback.break_pattern = state.playback.pattern + 1;
+        state.playback.next_row = 0;
     }
-    if state.break_pattern >= 0 {
-        if state.break_pattern >= state.src.song_length {
-            state.next_row = 0;
-            state.break_pattern = state.next_row;
+    if state.playback.break_pattern >= 0 {
+        if state.playback.break_pattern >= state.src.song_length {
+            state.playback.next_row = 0;
+            state.playback.break_pattern = state.playback.next_row;
         }
-        if state.break_pattern <= state.pattern {
+        if state.playback.break_pattern <= state.playback.pattern {
             song_end = true;
         }
-        state.pattern = state.break_pattern;
+        state.playback.pattern = state.playback.break_pattern;
         chan_idx = 0;
         while chan_idx < state.src.num_channels {
             state.channels[chan_idx as usize].pl_row = 0;
             chan_idx += 1;
         }
-        state.break_pattern = -1;
+        state.playback.break_pattern = -1;
     }
-    state.row = state.next_row;
-    state.next_row = state.row + 1;
-    if state.next_row >= 64 {
-        state.next_row = -1;
+    state.playback.row = state.playback.next_row;
+    state.playback.next_row = state.playback.row + 1;
+    if state.playback.next_row >= 64 {
+        state.playback.next_row = -1;
     }
-    pat_offset = ((state.src.sequence[state.pattern as usize] as i32 * 64) as i64 + state.row)
+    pat_offset = ((state.src.sequence[state.playback.pattern as usize] as i32 * 64) as i64
+        + state.playback.row)
         * state.src.num_channels
         * 4;
     chan_idx = 0;
@@ -572,18 +578,18 @@ fn sequence_row(state: &mut MmC2r) -> bool {
         channel_row(
             &mut state.channels[chan_idx as usize],
             state.sample_rate,
-            &mut state.gain,
-            &mut state.c2_rate,
-            &mut state.tick_len,
-            &mut state.pattern,
-            &mut state.break_pattern,
-            &mut state.row,
-            &mut state.next_row,
-            &mut state.tick,
-            &mut state.speed,
-            &mut state.pl_count,
-            &mut state.pl_channel,
-            &mut state.random_seed,
+            &mut state.playback.gain,
+            &mut state.playback.c2_rate,
+            &mut state.playback.tick_len,
+            &mut state.playback.pattern,
+            &mut state.playback.break_pattern,
+            &mut state.playback.row,
+            &mut state.playback.next_row,
+            &mut state.playback.tick,
+            &mut state.playback.speed,
+            &mut state.playback.pl_count,
+            &mut state.playback.pl_channel,
+            &mut state.playback.random_seed,
             &state.src,
         );
         chan_idx += 1;
@@ -593,9 +599,9 @@ fn sequence_row(state: &mut MmC2r) -> bool {
 fn sequence_tick(state: &mut MmC2r) -> bool {
     let mut song_end = false;
     let mut chan_idx;
-    state.tick -= 1;
-    if state.tick <= 0 {
-        state.tick = state.speed;
+    state.playback.tick -= 1;
+    if state.playback.tick <= 0 {
+        state.playback.tick = state.playback.speed;
         song_end = sequence_row(state);
     } else {
         chan_idx = 0;
@@ -603,9 +609,9 @@ fn sequence_tick(state: &mut MmC2r) -> bool {
             channel_tick(
                 &mut state.channels[chan_idx as usize],
                 state.sample_rate,
-                &mut state.gain,
-                &mut state.c2_rate,
-                &mut state.random_seed,
+                &mut state.playback.gain,
+                &mut state.playback.c2_rate,
+                &mut state.playback.random_seed,
                 &state.src.instruments,
             );
             chan_idx += 1;
@@ -710,19 +716,6 @@ impl MmC2r<'_> {
         let pattern_data = &data[1084..];
         let mut state = MmC2r {
             sample_rate,
-            gain: Default::default(),
-            c2_rate: Default::default(),
-            tick_len: Default::default(),
-            tick_offset: Default::default(),
-            pattern: Default::default(),
-            break_pattern: Default::default(),
-            row: Default::default(),
-            next_row: Default::default(),
-            tick: Default::default(),
-            speed: Default::default(),
-            pl_count: Default::default(),
-            pl_channel: Default::default(),
-            random_seed: Default::default(),
             channels: Default::default(),
             src: ModSrc {
                 instruments: Vec::new(),
@@ -733,6 +726,7 @@ impl MmC2r<'_> {
                 num_channels,
                 song_length,
             },
+            playback: PlaybackState::default(),
         };
         state.src.num_patterns = calculate_num_patterns(state.src.module_data);
         let mut sample_data_offset =
@@ -777,12 +771,12 @@ impl MmC2r<'_> {
                 sample_data,
             });
         }
-        state.c2_rate = (if state.src.num_channels > 4 {
+        state.playback.c2_rate = (if state.src.num_channels > 4 {
             8363
         } else {
             8287
         }) as i64;
-        state.gain = (if state.src.num_channels > 4 { 32 } else { 64 }) as i64;
+        state.playback.gain = (if state.src.num_channels > 4 { 32 } else { 64 }) as i64;
         state.mute_channel(-1);
         micromod_set_position(0, &mut state);
         Ok(state)
@@ -798,7 +792,7 @@ impl MmC2r<'_> {
         offset = 0;
         let mut cnt = true;
         while count > 0 {
-            remain = self.tick_len - self.tick_offset;
+            remain = self.playback.tick_len - self.playback.tick_offset;
             if remain > count {
                 remain = count;
             }
@@ -813,12 +807,12 @@ impl MmC2r<'_> {
                 );
                 chan_idx += 1;
             }
-            self.tick_offset += remain;
-            if self.tick_offset == self.tick_len {
+            self.playback.tick_offset += remain;
+            if self.playback.tick_offset == self.playback.tick_len {
                 if sequence_tick(self) {
                     cnt = false;
                 }
-                self.tick_offset = 0;
+                self.playback.tick_offset = 0;
             }
             offset += remain;
             count -= remain;
@@ -851,7 +845,7 @@ impl MmC2r<'_> {
             micromod_set_position(0, self);
             let mut song_end = false;
             while !song_end {
-                duration += self.tick_len;
+                duration += self.playback.tick_len;
                 song_end = sequence_tick(self);
             }
             micromod_set_position(0, self);
@@ -874,7 +868,7 @@ impl MmC2r<'_> {
     }
     /// Set some gainz.
     pub fn set_gain(&mut self, value: i64) {
-        self.gain = value;
+        self.playback.gain = value;
     }
 }
 
@@ -887,14 +881,14 @@ fn micromod_set_position(mut pos: i64, state: &mut MmC2r) {
     if pos >= state.src.song_length {
         pos = 0;
     }
-    state.break_pattern = pos;
-    state.next_row = 0;
-    state.tick = 1;
-    state.speed = 6;
-    set_tempo(125, &mut state.tick_len, state.sample_rate);
-    state.pl_channel = -1;
-    state.pl_count = state.pl_channel;
-    state.random_seed = 0xabcdef;
+    state.playback.break_pattern = pos;
+    state.playback.next_row = 0;
+    state.playback.tick = 1;
+    state.playback.speed = 6;
+    set_tempo(125, &mut state.playback.tick_len, state.sample_rate);
+    state.playback.pl_channel = -1;
+    state.playback.pl_count = state.playback.pl_channel;
+    state.playback.random_seed = 0xabcdef;
     chan_idx = 0;
     while chan_idx < state.src.num_channels {
         chan = &mut state.channels[chan_idx as usize];
@@ -915,7 +909,7 @@ fn micromod_set_position(mut pos: i64, state: &mut MmC2r) {
         chan_idx += 1;
     }
     sequence_tick(state);
-    state.tick_offset = 0;
+    state.playback.tick_offset = 0;
 }
 
 #[test]
