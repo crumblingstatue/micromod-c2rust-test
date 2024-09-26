@@ -505,12 +505,10 @@ fn sequence_row(
     for chan in channels {
         let note = &mut chan.note;
         let pattern_data = src.pattern_data;
-        note.key = ((i32::from(pattern_data[pat_offset as usize]) & 0xf) << 8) as u16;
-        note.key =
-            (i32::from(note.key) | i32::from(pattern_data[(pat_offset + 1) as usize])) as u16;
-        note.instrument = (i32::from(pattern_data[(pat_offset + 2) as usize]) >> 4) as u8;
-        note.instrument = (i32::from(note.instrument)
-            | i32::from(pattern_data[pat_offset as usize]) & 0x10) as u8;
+        note.key = (u16::from(pattern_data[pat_offset as usize]) & 0xf) << 8;
+        note.key |= u16::from(pattern_data[(pat_offset + 1) as usize]);
+        note.instrument = (pattern_data[(pat_offset + 2) as usize]) >> 4;
+        note.instrument |= pattern_data[pat_offset as usize] & 0x10;
         let mut effect = pattern_data[(pat_offset + 2) as usize] & 0xf;
         let mut param = pattern_data[(pat_offset + 3) as usize];
         pat_offset += 4;
