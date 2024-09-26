@@ -722,6 +722,7 @@ impl State<'_> {
         if sample_rate < 8000 {
             return Err(InitError::SamplingRateIncorrect);
         }
+        let song_length = (data[950] as i32 & 0x7f_i32) as i64;
         let sequence = &data[952..];
         let pattern_data = &data[1084..];
         let mut state = State {
@@ -744,7 +745,7 @@ impl State<'_> {
             module_data: bytemuck::cast_slice(data),
             pattern_data,
             sequence,
-            song_length: Default::default(),
+            song_length,
             num_patterns: Default::default(),
             num_channels,
         };
