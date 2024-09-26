@@ -5,6 +5,8 @@
 
 #![warn(
     missing_docs,
+    trivial_casts,
+    trivial_numeric_casts,
     clippy::cast_lossless,
     clippy::missing_const_for_fn,
     clippy::needless_pass_by_ref_mut
@@ -144,11 +146,8 @@ fn calculate_num_channels(module_header: &[u8]) -> Option<i64> {
         Some(numchan)
     }
 }
-fn unsigned_short_big_endian(buf: &[u8], offset: i64) -> i64 {
-    i64::from(
-        (i32::from(buf[offset as usize]) & 0xff_i32) << 8
-            | i32::from(buf[(offset + 1) as usize]) & 0xff_i32,
-    )
+fn unsigned_short_big_endian(buf: &[u8], offset: usize) -> i64 {
+    i64::from((i32::from(buf[offset]) & 0xff_i32) << 8 | i32::from(buf[offset + 1]) & 0xff_i32)
 }
 fn set_tempo(tempo: i64, tick_len: &mut i64, sample_rate: i64) {
     *tick_len = ((sample_rate << 1) + (sample_rate >> 1)) / tempo;
@@ -712,13 +711,10 @@ impl MmC2r<'_> {
                 bytemuck::cast_slice(state.src.module_data),
                 inst_idx * 30 + 12,
             ) * 2;
-            let fine_tune = i64::from(
-                i32::from(state.src.module_data[(inst_idx * 30 + 14) as usize]) & 0xf_i32,
-            );
+            let fine_tune =
+                i64::from(i32::from(state.src.module_data[inst_idx * 30 + 14]) & 0xf_i32);
             let fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
-            let volume = i64::from(
-                i32::from(state.src.module_data[(inst_idx * 30 + 15) as usize]) & 0x7f_i32,
-            );
+            let volume = i64::from(i32::from(state.src.module_data[inst_idx * 30 + 15]) & 0x7f_i32);
             let volume = (if volume > 64 { 64 } else { volume }) as u8;
             let mut loop_start = unsigned_short_big_endian(
                 bytemuck::cast_slice(state.src.module_data),
