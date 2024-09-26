@@ -1,5 +1,12 @@
+//! Experiment with converting [Micromod](https://github.com/martincameron/micromod) with
+//! [c2rust](https://c2rust.com/).
+//! 
+//! Safetyfication done manually
+
+#![warn(missing_docs)]
+
 #[derive(Copy, Clone, Default)]
-pub struct Channel {
+struct Channel {
     pub note: Note,
     pub period: u16,
     pub porta_period: u16,
@@ -30,14 +37,14 @@ pub struct Channel {
     pub arpeggio_add: i8,
 }
 #[derive(Copy, Clone, Default)]
-pub struct Note {
+struct Note {
     pub key: u16,
     pub instrument: u8,
     pub effect: u8,
     pub param: u8,
 }
 #[derive(Copy, Clone)]
-pub struct Instrument<'src> {
+struct Instrument<'src> {
     pub volume: u8,
     pub fine_tune: u8,
     pub loop_start: u64,
@@ -69,7 +76,8 @@ static SINE_TABLE: [u8; 32] = [
     235, 224, 212, 197, 180, 161, 141, 120, 97, 74, 49, 24,
 ];
 
-pub struct State<'src> {
+/// A micromod decoding instance thingy.
+pub struct MmC2r<'src> {
     sample_rate: i64,
     gain: i64,
     c2_rate: i64,
@@ -504,7 +512,7 @@ fn channel_tick(
         update_frequency(chan, sample_rate, gain, c2_rate);
     }
 }
-fn sequence_row(state: &mut State) -> bool {
+fn sequence_row(state: &mut MmC2r) -> bool {
     let mut song_end = false;
     let mut chan_idx;
     let mut pat_offset;
@@ -583,7 +591,7 @@ fn sequence_row(state: &mut State) -> bool {
     }
     song_end
 }
-fn sequence_tick(state: &mut State) -> bool {
+fn sequence_tick(state: &mut MmC2r) -> bool {
     let mut song_end = false;
     let mut chan_idx;
     state.tick -= 1;
@@ -674,35 +682,23 @@ fn resample(
     chan.sample_idx = sidx;
 }
 
-pub fn micromod_get_version() -> &'static str {
+/// Get a nice version string. I guess.
+pub fn version() -> &'static str {
     MICROMOD_VERSION
 }
 
-pub fn micromod_calculate_mod_file_len(module_header: &[i8]) -> i64 {
-    let mut length;
-
-    let mut inst_idx;
-    let numchan = calculate_num_channels(module_header);
-    if numchan <= 0 {
-        return -1;
-    }
-    length = 1084 + 4 * numchan * 64 * calculate_num_patterns(module_header);
-    inst_idx = 1;
-    while inst_idx < 32 {
-        length += unsigned_short_big_endian(module_header, inst_idx * 30 + 12) * 2;
-        inst_idx += 1;
-    }
-    length
-}
-
+/// An error that can happen when trying to initialize micromod
 #[derive(Debug)]
 pub enum InitError {
+    /// Number of channels is incorrect
     ChannelNumIncorrect,
+    /// Sampling rate is incorrect (below 8khz?)
     SamplingRateIncorrect,
 }
 
-impl State<'_> {
-    pub fn init(data: &[u8], sample_rate: i64) -> Result<State, InitError> {
+impl MmC2r<'_> {
+    /// Create a new micromod decoder apparatus.
+    pub fn new(data: &[u8], sample_rate: i64) -> Result<MmC2r, InitError> {
         let num_channels = calculate_num_channels(bytemuck::cast_slice(data));
         if num_channels <= 0 {
             return Err(InitError::ChannelNumIncorrect);
@@ -713,7 +709,7 @@ impl State<'_> {
         let song_length = (data[950] as i32 & 0x7f_i32) as i64;
         let sequence = &data[952..];
         let pattern_data = &data[1084..];
-        let mut state = State {
+        let mut state = MmC2r {
             sample_rate,
             gain: Default::default(),
             c2_rate: Default::default(),
@@ -781,10 +777,11 @@ impl State<'_> {
         }
         state.c2_rate = (if state.num_channels > 4 { 8363 } else { 8287 }) as i64;
         state.gain = (if state.num_channels > 4 { 32 } else { 64 }) as i64;
-        micromod_mute_channel(-1, &mut state);
+        state.mute_channel(-1);
         micromod_set_position(0, &mut state);
         Ok(state)
     }
+    /// Fill a buffer with delicious samples
     pub fn get_audio(&mut self, output_buffer: &mut [i16], mut count: i64) -> bool {
         let mut offset;
         let mut remain;
@@ -822,24 +819,60 @@ impl State<'_> {
         }
         cnt
     }
-}
-
-pub fn micromod_calculate_song_duration(state: &mut State) -> i64 {
-    let mut duration;
-    duration = 0;
-    if state.num_channels > 0 {
-        micromod_set_position(0, state);
-        let mut song_end = false;
-        while !song_end {
-            duration += state.tick_len;
-            song_end = sequence_tick(state);
+    /// Calculate the length of the module file... In samples. Presumably.
+    pub fn calculate_mod_file_len(&self) -> i64 {
+        let module_header = self.module_data;
+        let mut length;
+    
+        let mut inst_idx;
+        let numchan = calculate_num_channels(module_header);
+        if numchan <= 0 {
+            return -1;
         }
-        micromod_set_position(0, state);
+        length = 1084 + 4 * numchan * 64 * calculate_num_patterns(module_header);
+        inst_idx = 1;
+        while inst_idx < 32 {
+            length += unsigned_short_big_endian(module_header, inst_idx * 30 + 12) * 2;
+            inst_idx += 1;
+        }
+        length
     }
-    duration
+    /// Calculate the song duration... Okay.
+    pub fn calculate_song_duration(&mut self) -> i64 {
+        let mut duration;
+        duration = 0;
+        if self.num_channels > 0 {
+            micromod_set_position(0, self);
+            let mut song_end = false;
+            while !song_end {
+                duration += self.tick_len;
+                song_end = sequence_tick(self);
+            }
+            micromod_set_position(0, self);
+        }
+        duration
+    }
+    /// Mute a channel.
+    pub fn mute_channel(&mut self, channel: i64) -> i64 {
+        let mut chan_idx;
+        if channel < 0 {
+            chan_idx = 0;
+            while chan_idx < self.num_channels {
+                self.channels[chan_idx as usize].mute = 0;
+                chan_idx += 1;
+            }
+        } else if channel < self.num_channels {
+            self.channels[channel as usize].mute = 1;
+        }
+        self.num_channels
+    }
+    /// Set some gainz.
+    pub fn set_gain(&mut self, value: i64) {
+        self.gain = value;
+    }
 }
 
-fn micromod_set_position(mut pos: i64, state: &mut State) {
+fn micromod_set_position(mut pos: i64, state: &mut MmC2r) {
     let mut chan_idx;
     let mut chan;
     if state.num_channels <= 0 {
@@ -879,46 +912,10 @@ fn micromod_set_position(mut pos: i64, state: &mut State) {
     state.tick_offset = 0;
 }
 
-pub fn micromod_mute_channel(channel: i64, state: &mut State) -> i64 {
-    let mut chan_idx;
-    if channel < 0 {
-        chan_idx = 0;
-        while chan_idx < state.num_channels {
-            state.channels[chan_idx as usize].mute = 0;
-            chan_idx += 1;
-        }
-    } else if channel < state.num_channels {
-        state.channels[channel as usize].mute = 1;
-    }
-    state.num_channels
-}
-
-pub fn micromod_set_gain(value: i64, state: &mut State) {
-    state.gain = value;
-}
-
-use std::io::{BufWriter, Write as _};
-
-fn main() {
-    let mod_data = std::fs::read(std::env::args_os().nth(1).unwrap()).unwrap();
-    let output_file = std::fs::File::create("output.pcm").unwrap();
-    let mut writer = BufWriter::new(output_file);
-    let mut state = State::init(&mod_data, 48_000).unwrap();
-    loop {
-        let mut out = [0; 4096];
-        if !state.get_audio(&mut out, 2048) {
-            return;
-        }
-        for sample in out {
-            writer.write_all(sample.to_le_bytes().as_slice()).unwrap();
-        }
-    }
-}
-
 #[test]
 fn test_against_orig() {
     let mut test_bytes: Vec<u8> = Vec::new();
-    let mut state = State::init(include_bytes!("../testdata/rainysum.mod"), 48_000).unwrap();
+    let mut state = MmC2r::new(include_bytes!("../testdata/rainysum.mod"), 48_000).unwrap();
     for _ in 0..1000 {
         let mut out = [0; 4096];
         state.get_audio(&mut out, 2048);
