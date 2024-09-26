@@ -785,6 +785,43 @@ impl State<'_> {
         micromod_set_position(0, &mut state);
         Ok(state)
     }
+    pub fn get_audio(&mut self, output_buffer: &mut [i16], mut count: i64) -> bool {
+        let mut offset;
+        let mut remain;
+        let mut chan_idx;
+        if self.num_channels <= 0 {
+            return false;
+        }
+        offset = 0;
+        let mut cnt = true;
+        while count > 0 {
+            remain = self.tick_len - self.tick_offset;
+            if remain > count {
+                remain = count;
+            }
+            chan_idx = 0;
+            while chan_idx < self.num_channels {
+                resample(
+                    &mut self.channels[chan_idx as usize],
+                    output_buffer,
+                    offset,
+                    remain,
+                    &mut self.instruments,
+                );
+                chan_idx += 1;
+            }
+            self.tick_offset += remain;
+            if self.tick_offset == self.tick_len {
+                if sequence_tick(self) {
+                    cnt = false;
+                }
+                self.tick_offset = 0;
+            }
+            offset += remain;
+            count -= remain;
+        }
+        cnt
+    }
 }
 
 pub fn micromod_calculate_song_duration(state: &mut State) -> i64 {
@@ -860,44 +897,6 @@ pub fn micromod_set_gain(value: i64, state: &mut State) {
     state.gain = value;
 }
 
-pub fn micromod_get_audio(output_buffer: &mut [i16], mut count: i64, state: &mut State) -> bool {
-    let mut offset;
-    let mut remain;
-    let mut chan_idx;
-    if state.num_channels <= 0 {
-        return false;
-    }
-    offset = 0;
-    let mut cnt = true;
-    while count > 0 {
-        remain = state.tick_len - state.tick_offset;
-        if remain > count {
-            remain = count;
-        }
-        chan_idx = 0;
-        while chan_idx < state.num_channels {
-            resample(
-                &mut state.channels[chan_idx as usize],
-                output_buffer,
-                offset,
-                remain,
-                &mut state.instruments,
-            );
-            chan_idx += 1;
-        }
-        state.tick_offset += remain;
-        if state.tick_offset == state.tick_len {
-            if sequence_tick(state) {
-                cnt = false;
-            }
-            state.tick_offset = 0;
-        }
-        offset += remain;
-        count -= remain;
-    }
-    cnt
-}
-
 use std::io::{BufWriter, Write as _};
 
 fn main() {
@@ -907,7 +906,7 @@ fn main() {
     let mut state = State::init(&mod_data, 48_000).unwrap();
     loop {
         let mut out = [0; 4096];
-        if !micromod_get_audio(&mut out, 2048, &mut state) {
+        if !state.get_audio(&mut out, 2048) {
             return;
         }
         for sample in out {
@@ -922,7 +921,7 @@ fn test_against_orig() {
     let mut state = State::init(include_bytes!("../testdata/rainysum.mod"), 48_000).unwrap();
     for _ in 0..1000 {
         let mut out = [0; 4096];
-        micromod_get_audio(&mut out, 2048, &mut state);
+        state.get_audio(&mut out, 2048);
         test_bytes.extend_from_slice(bytemuck::cast_slice(&out));
     }
     assert!(test_bytes == include_bytes!("../testdata/orig.pcm"));
