@@ -112,19 +112,16 @@ pub struct MmC2r<'src> {
 }
 
 fn calculate_num_patterns(module_header: &[u8]) -> i64 {
-    let mut num_patterns_0;
-    let mut order_entry;
-    let mut pattern_0;
-    num_patterns_0 = 0;
-    pattern_0 = 0;
-    while pattern_0 < 128 {
-        order_entry = i64::from(i32::from(module_header[(952 + pattern_0) as usize]) & 0x7f);
-        if order_entry >= num_patterns_0 {
-            num_patterns_0 = order_entry + 1;
+    let mut num = 0;
+    let mut i = 0;
+    while i < 128 {
+        let order_entry = i64::from(i32::from(module_header[(952 + i) as usize]) & 0x7f);
+        if order_entry >= num {
+            num = order_entry + 1;
         }
-        pattern_0 += 1;
+        i += 1;
     }
-    num_patterns_0
+    num
 }
 
 fn calculate_num_channels(module_header: &[u8]) -> Option<i64> {
