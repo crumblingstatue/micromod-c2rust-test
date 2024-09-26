@@ -511,8 +511,8 @@ fn sequence_row(
         note.instrument = (i32::from(pattern_data[(pat_offset + 2) as usize]) >> 4) as u8;
         note.instrument = (i32::from(note.instrument)
             | i32::from(pattern_data[pat_offset as usize]) & 0x10) as u8;
-        let mut effect = i32::from(pattern_data[(pat_offset + 2) as usize]) & 0xf;
-        let mut param = i32::from(pattern_data[(pat_offset + 3) as usize]);
+        let mut effect = pattern_data[(pat_offset + 2) as usize] & 0xf;
+        let mut param = pattern_data[(pat_offset + 3) as usize];
         pat_offset += 4;
         if effect == 0xe {
             effect = 0x10 | param >> 4;
@@ -521,8 +521,8 @@ fn sequence_row(
         if effect == 0 && param > 0 {
             effect = 0xe;
         }
-        note.effect = effect as u8;
-        note.param = param as u8;
+        note.effect = effect;
+        note.param = param;
         channel_row(chan, *sample_rate, src, playback);
     }
     song_end
