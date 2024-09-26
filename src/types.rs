@@ -57,12 +57,13 @@ impl Instrument<'_> {
     }
 }
 
+pub(crate) const N_INSTRUMENTS: usize = 32;
+
 /// Immutable source data of the module
 pub(crate) struct ModSrc<'src> {
-    pub(crate) instruments: Vec<Instrument<'src>>,
+    pub(crate) instruments: [Instrument<'src>; N_INSTRUMENTS],
     pub(crate) pattern_data: &'src [u8],
     pub(crate) sequence: &'src [u8],
-    pub(crate) num_patterns: i32,
     pub(crate) num_channels: i32,
     pub(crate) song_length: i32,
 }

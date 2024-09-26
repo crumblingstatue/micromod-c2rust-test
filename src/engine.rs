@@ -24,57 +24,59 @@ impl Engine<'_> {
         let song_length = i32::from(data[950]) & 0x7f;
         let sequence = &data[952..];
         let pattern_data = &data[1084..];
+        let num_patterns = crate::parse::calculate_num_patterns(data);
+        let mut sample_data_offset: usize =
+            1084 + num_patterns as usize * 64 * num_channels as usize * 4;
+        let instruments = std::array::from_fn(|inst_idx| {
+            if inst_idx == 0 {
+                // First instrument is an unused dummy instrument
+                Instrument::dummy()
+            } else {
+                let sample_length = u32::from(data.read_u16_be(inst_idx * 30 + 12).unwrap()) * 2;
+                let fine_tune = i32::from(data[inst_idx * 30 + 14]) & 0xf;
+                let fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
+                let volume = i32::from(data[inst_idx * 30 + 15]) & 0x7f;
+                let volume = (if volume > 64 { 64 } else { volume }) as u8;
+
+                let mut loop_start = u32::from(data.read_u16_be(inst_idx * 30 + 16).unwrap()) * 2;
+                let mut loop_length = u32::from(data.read_u16_be(inst_idx * 30 + 18).unwrap()) * 2;
+
+                if loop_start + loop_length > sample_length {
+                    if loop_start / 2 + loop_length <= sample_length {
+                        loop_start /= 2;
+                    } else {
+                        loop_length = sample_length - loop_start;
+                    }
+                }
+                if loop_length < 4 {
+                    loop_start = sample_length;
+                    loop_length = 0;
+                }
+                let loop_start = loop_start << 14;
+                let loop_length = loop_length << 14;
+                let sample_data = bytemuck::cast_slice(&data[sample_data_offset..]);
+                sample_data_offset += sample_length as usize;
+                Instrument {
+                    volume,
+                    fine_tune,
+                    loop_start: loop_start as usize,
+                    loop_length: loop_length as usize,
+                    sample_data,
+                }
+            }
+        });
         let mut mm = Engine {
             sample_rate,
             channels: vec![Channel::default(); num_channels as usize],
             src: ModSrc {
-                instruments: Vec::new(),
+                instruments,
                 pattern_data,
                 sequence,
-                num_patterns: Default::default(),
                 num_channels: num_channels.into(),
                 song_length,
             },
             playback: PlaybackState::default(),
         };
-        mm.src.num_patterns = crate::parse::calculate_num_patterns(data).into();
-        let mut sample_data_offset: usize =
-            1084 + mm.src.num_patterns as usize * 64 * num_channels as usize * 4;
-        // First instrument is an unused dummy instrument
-        mm.src.instruments.push(Instrument::dummy());
-        for inst_idx in 1..32 {
-            let sample_length = u32::from(data.read_u16_be(inst_idx * 30 + 12).unwrap()) * 2;
-            let fine_tune = i32::from(data[inst_idx * 30 + 14]) & 0xf;
-            let fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
-            let volume = i32::from(data[inst_idx * 30 + 15]) & 0x7f;
-            let volume = (if volume > 64 { 64 } else { volume }) as u8;
-
-            let mut loop_start = u32::from(data.read_u16_be(inst_idx * 30 + 16).unwrap()) * 2;
-            let mut loop_length = u32::from(data.read_u16_be(inst_idx * 30 + 18).unwrap()) * 2;
-
-            if loop_start + loop_length > sample_length {
-                if loop_start / 2 + loop_length <= sample_length {
-                    loop_start /= 2;
-                } else {
-                    loop_length = sample_length - loop_start;
-                }
-            }
-            if loop_length < 4 {
-                loop_start = sample_length;
-                loop_length = 0;
-            }
-            let loop_start = loop_start << 14;
-            let loop_length = loop_length << 14;
-            let sample_data = bytemuck::cast_slice(&data[sample_data_offset..]);
-            sample_data_offset += sample_length as usize;
-            mm.src.instruments.push(Instrument {
-                volume,
-                fine_tune,
-                loop_start: loop_start as usize,
-                loop_length: loop_length as usize,
-                sample_data,
-            });
-        }
         mm.playback.c2_rate = if mm.src.num_channels > 4 { 8363 } else { 8287 };
         mm.playback.gain = if mm.src.num_channels > 4 { 32 } else { 64 };
         mm.unmute_all();
