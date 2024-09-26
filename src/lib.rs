@@ -82,6 +82,8 @@ struct ModSrc<'src> {
     module_data: &'src [i8],
     pattern_data: &'src [u8],
     sequence: &'src [u8],
+    num_patterns: i64,
+    num_channels: i64,
 }
 
 /// A micromod decoding instance thingy.
@@ -102,8 +104,6 @@ pub struct MmC2r<'src> {
     random_seed: i64,
     channels: [Channel; 16],
     song_length: i64,
-    num_patterns: i64,
-    num_channels: i64,
     src: ModSrc<'src>,
 }
 
@@ -297,8 +297,7 @@ fn channel_row(
     pl_count: &mut i64,
     pl_channel: &mut i64,
     random_seed: &mut i64,
-    instruments: &[Instrument],
-    num_channels: &mut i64,
+    src: &ModSrc,
 ) {
     let volume;
     let period;
@@ -312,7 +311,7 @@ fn channel_row(
     *fresh2 = *fresh1;
     chan.vibrato_add = *fresh2;
     if !(effect == 0x1d && param > 0) {
-        trigger(chan, instruments);
+        trigger(chan, &src.instruments);
     }
     match effect {
         3 => {
@@ -342,7 +341,7 @@ fn channel_row(
             tremolo(chan, random_seed);
         }
         8 => {
-            if *num_channels != 4 {
+            if src.num_channels != 4 {
                 chan.panning = (if param < 128 { param } else { 127 }) as u8;
             }
         }
@@ -538,7 +537,7 @@ fn sequence_row(state: &mut MmC2r) -> bool {
         }
         state.pattern = state.break_pattern;
         chan_idx = 0;
-        while chan_idx < state.num_channels {
+        while chan_idx < state.src.num_channels {
             state.channels[chan_idx as usize].pl_row = 0;
             chan_idx += 1;
         }
@@ -550,10 +549,10 @@ fn sequence_row(state: &mut MmC2r) -> bool {
         state.next_row = -1;
     }
     pat_offset = ((state.src.sequence[state.pattern as usize] as i32 * 64) as i64 + state.row)
-        * state.num_channels
+        * state.src.num_channels
         * 4;
     chan_idx = 0;
-    while chan_idx < state.num_channels {
+    while chan_idx < state.src.num_channels {
         note = &mut (state.channels[chan_idx as usize]).note;
         let pattern_data = state.src.pattern_data;
         note.key = ((pattern_data[pat_offset as usize] as i32 & 0xf_i32) << 8) as u16;
@@ -589,8 +588,7 @@ fn sequence_row(state: &mut MmC2r) -> bool {
             &mut state.pl_count,
             &mut state.pl_channel,
             &mut state.random_seed,
-            &state.src.instruments,
-            &mut state.num_channels,
+            &state.src,
         );
         chan_idx += 1;
     }
@@ -605,7 +603,7 @@ fn sequence_tick(state: &mut MmC2r) -> bool {
         song_end = sequence_row(state);
     } else {
         chan_idx = 0;
-        while chan_idx < state.num_channels {
+        while chan_idx < state.src.num_channels {
             channel_tick(
                 &mut state.channels[chan_idx as usize],
                 &mut state.sample_rate,
@@ -735,13 +733,14 @@ impl MmC2r<'_> {
                 module_data: bytemuck::cast_slice(data),
                 pattern_data,
                 sequence,
+                num_patterns: Default::default(),
+                num_channels,
             },
             song_length,
-            num_patterns: Default::default(),
-            num_channels,
         };
-        state.num_patterns = calculate_num_patterns(state.src.module_data);
-        let mut sample_data_offset = 1084 + state.num_patterns * 64 * state.num_channels * 4;
+        state.src.num_patterns = calculate_num_patterns(state.src.module_data);
+        let mut sample_data_offset =
+            1084 + state.src.num_patterns * 64 * state.src.num_channels * 4;
         let mut inst_idx = 1;
         // First instrument is an unused dummy instrument
         state.src.instruments.push(Instrument::dummy());
@@ -782,8 +781,12 @@ impl MmC2r<'_> {
                 sample_data,
             });
         }
-        state.c2_rate = (if state.num_channels > 4 { 8363 } else { 8287 }) as i64;
-        state.gain = (if state.num_channels > 4 { 32 } else { 64 }) as i64;
+        state.c2_rate = (if state.src.num_channels > 4 {
+            8363
+        } else {
+            8287
+        }) as i64;
+        state.gain = (if state.src.num_channels > 4 { 32 } else { 64 }) as i64;
         state.mute_channel(-1);
         micromod_set_position(0, &mut state);
         Ok(state)
@@ -793,7 +796,7 @@ impl MmC2r<'_> {
         let mut offset;
         let mut remain;
         let mut chan_idx;
-        if self.num_channels <= 0 {
+        if self.src.num_channels <= 0 {
             return false;
         }
         offset = 0;
@@ -804,7 +807,7 @@ impl MmC2r<'_> {
                 remain = count;
             }
             chan_idx = 0;
-            while chan_idx < self.num_channels {
+            while chan_idx < self.src.num_channels {
                 resample(
                     &mut self.channels[chan_idx as usize],
                     output_buffer,
@@ -848,7 +851,7 @@ impl MmC2r<'_> {
     pub fn calculate_song_duration(&mut self) -> i64 {
         let mut duration;
         duration = 0;
-        if self.num_channels > 0 {
+        if self.src.num_channels > 0 {
             micromod_set_position(0, self);
             let mut song_end = false;
             while !song_end {
@@ -864,14 +867,14 @@ impl MmC2r<'_> {
         let mut chan_idx;
         if channel < 0 {
             chan_idx = 0;
-            while chan_idx < self.num_channels {
+            while chan_idx < self.src.num_channels {
                 self.channels[chan_idx as usize].mute = 0;
                 chan_idx += 1;
             }
-        } else if channel < self.num_channels {
+        } else if channel < self.src.num_channels {
             self.channels[channel as usize].mute = 1;
         }
-        self.num_channels
+        self.src.num_channels
     }
     /// Set some gainz.
     pub fn set_gain(&mut self, value: i64) {
@@ -882,7 +885,7 @@ impl MmC2r<'_> {
 fn micromod_set_position(mut pos: i64, state: &mut MmC2r) {
     let mut chan_idx;
     let mut chan;
-    if state.num_channels <= 0 {
+    if state.src.num_channels <= 0 {
         return;
     }
     if pos >= state.song_length {
@@ -897,7 +900,7 @@ fn micromod_set_position(mut pos: i64, state: &mut MmC2r) {
     state.pl_count = state.pl_channel;
     state.random_seed = 0xabcdef;
     chan_idx = 0;
-    while chan_idx < state.num_channels {
+    while chan_idx < state.src.num_channels {
         chan = &mut state.channels[chan_idx as usize];
         chan.id = chan_idx as u8;
         let fresh15 = &mut chan.assigned;
