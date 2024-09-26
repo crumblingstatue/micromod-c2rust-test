@@ -630,16 +630,16 @@ fn resample(
             if i32::from(lamp) != 0 && i32::from(ramp) != 0 {
                 while sidx < epos {
                     ampl = i16::from(sdat[sidx >> 14]);
-                    let fresh9 = buf_idx;
+                    let idx = buf_idx;
                     buf_idx = buf_idx.wrapping_add(1);
-                    let fresh10 = &mut (buf[fresh9]);
-                    *fresh10 =
-                        (i32::from(*fresh10) + ((i32::from(ampl) * i32::from(lamp)) >> 2)) as i16;
-                    let fresh11 = buf_idx;
+                    let sample = &mut buf[idx];
+                    *sample =
+                        (i32::from(*sample) + ((i32::from(ampl) * i32::from(lamp)) >> 2)) as i16;
+                    let idx = buf_idx;
                     buf_idx = buf_idx.wrapping_add(1);
-                    let fresh12 = &mut (buf[fresh11]);
-                    *fresh12 =
-                        (i32::from(*fresh12) + ((i32::from(ampl) * i32::from(ramp)) >> 2)) as i16;
+                    let sample = &mut buf[idx];
+                    *sample =
+                        (i32::from(*sample) + ((i32::from(ampl) * i32::from(ramp)) >> 2)) as i16;
                     sidx = sidx.wrapping_add(step);
                 }
             } else {
@@ -647,7 +647,7 @@ fn resample(
                     buf_idx = buf_idx.wrapping_add(1);
                 }
                 while sidx < epos {
-                    let sample = &mut (buf[buf_idx]);
+                    let sample = &mut buf[buf_idx];
                     *sample =
                         (i32::from(*sample) + i32::from(sdat[sidx >> 14]) * i32::from(ampl)) as i16;
                     buf_idx = buf_idx.wrapping_add(2);
