@@ -912,3 +912,15 @@ fn main() {
         }
     }
 }
+
+#[test]
+fn test_against_orig() {
+    let mut test_bytes: Vec<u8> = Vec::new();
+    let mut state = State::init(include_bytes!("../testdata/rainysum.mod"), 48_000).unwrap();
+    for _ in 0..1000 {
+        let mut out = [0; 4096];
+        micromod_get_audio(&mut out, 2048, &mut state);
+        test_bytes.extend_from_slice(bytemuck::cast_slice(&out));
+    }
+    assert!(test_bytes == include_bytes!("../testdata/orig.pcm"));
+}
