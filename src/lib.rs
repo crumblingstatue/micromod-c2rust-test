@@ -283,23 +283,7 @@ fn trigger(channel: &mut Channel, instruments: &[Instrument]) {
         }
     }
 }
-fn channel_row(
-    chan: &mut Channel,
-    sample_rate: i64,
-    gain: &mut i64,
-    c2_rate: &mut i64,
-    tick_len: &mut i64,
-    pattern: &mut i64,
-    break_pattern: &mut i64,
-    row: &mut i64,
-    next_row: &mut i64,
-    tick: &mut i64,
-    speed: &mut i64,
-    pl_count: &mut i64,
-    pl_channel: &mut i64,
-    random_seed: &mut i64,
-    src: &ModSrc,
-) {
+fn channel_row(chan: &mut Channel, sample_rate: i64, src: &ModSrc, playback: &mut PlaybackState) {
     let volume;
     let period;
     let effect = chan.note.effect as i64;
@@ -327,10 +311,10 @@ fn channel_row(
             if param & 0xf > 0 {
                 chan.vibrato_depth = (param & 0xf) as u8;
             }
-            vibrato(chan, random_seed);
+            vibrato(chan, &mut playback.random_seed);
         }
         6 => {
-            vibrato(chan, random_seed);
+            vibrato(chan, &mut playback.random_seed);
         }
         7 => {
             if param & 0xf0 > 0 {
@@ -339,7 +323,7 @@ fn channel_row(
             if param & 0xf > 0 {
                 chan.tremolo_depth = (param & 0xf) as u8;
             }
-            tremolo(chan, random_seed);
+            tremolo(chan, &mut playback.random_seed);
         }
         8 => {
             if src.num_channels != 4 {
@@ -347,32 +331,32 @@ fn channel_row(
             }
         }
         11 => {
-            if *pl_count < 0 {
-                *break_pattern = param;
-                *next_row = 0;
+            if playback.pl_count < 0 {
+                playback.break_pattern = param;
+                playback.next_row = 0;
             }
         }
         12 => {
             chan.volume = (if param > 64 { 64 } else { param }) as u8;
         }
         13 => {
-            if *pl_count < 0 {
-                if *break_pattern < 0 {
-                    *break_pattern = *pattern + 1;
+            if playback.pl_count < 0 {
+                if playback.break_pattern < 0 {
+                    playback.break_pattern = playback.pattern + 1;
                 }
-                *next_row = (param >> 4) * 10 + (param & 0xf);
-                if *next_row >= 64 {
-                    *next_row = 0;
+                playback.next_row = (param >> 4) * 10 + (param & 0xf);
+                if playback.next_row >= 64 {
+                    playback.next_row = 0;
                 }
             }
         }
         15 => {
             if param > 0 {
                 if param < 32 {
-                    *speed = param;
-                    *tick = *speed;
+                    playback.speed = param;
+                    playback.tick = playback.speed;
                 } else {
-                    set_tempo(param, tick_len, sample_rate);
+                    set_tempo(param, &mut playback.tick_len, sample_rate);
                 }
             }
         }
@@ -391,20 +375,20 @@ fn channel_row(
         }
         22 => {
             if param == 0 {
-                chan.pl_row = *row as u8;
+                chan.pl_row = playback.row as u8;
             }
-            if (chan.pl_row as i64) < *row && *break_pattern < 0 {
-                if *pl_count < 0 {
-                    *pl_count = param;
-                    *pl_channel = chan.id as i64;
+            if (chan.pl_row as i64) < playback.row && playback.break_pattern < 0 {
+                if playback.pl_count < 0 {
+                    playback.pl_count = param;
+                    playback.pl_channel = chan.id as i64;
                 }
-                if *pl_channel == chan.id as i64 {
-                    if *pl_count == 0 {
-                        chan.pl_row = (*row + 1) as u8;
+                if playback.pl_channel == chan.id as i64 {
+                    if playback.pl_count == 0 {
+                        chan.pl_row = (playback.row + 1) as u8;
                     } else {
-                        *next_row = chan.pl_row as i64;
+                        playback.next_row = chan.pl_row as i64;
                     }
-                    *pl_count -= 1;
+                    playback.pl_count -= 1;
                 }
             }
         }
@@ -427,11 +411,11 @@ fn channel_row(
             }
         }
         30 => {
-            *tick = *speed + *speed * param;
+            playback.tick = playback.speed + playback.speed * param;
         }
         _ => {}
     }
-    update_frequency(chan, sample_rate, gain, c2_rate);
+    update_frequency(chan, sample_rate, &mut playback.gain, &mut playback.c2_rate);
 }
 fn channel_tick(
     chan: &mut Channel,
@@ -578,19 +562,8 @@ fn sequence_row(state: &mut MmC2r) -> bool {
         channel_row(
             &mut state.channels[chan_idx as usize],
             state.sample_rate,
-            &mut state.playback.gain,
-            &mut state.playback.c2_rate,
-            &mut state.playback.tick_len,
-            &mut state.playback.pattern,
-            &mut state.playback.break_pattern,
-            &mut state.playback.row,
-            &mut state.playback.next_row,
-            &mut state.playback.tick,
-            &mut state.playback.speed,
-            &mut state.playback.pl_count,
-            &mut state.playback.pl_channel,
-            &mut state.playback.random_seed,
             &state.src,
+            &mut state.playback,
         );
         chan_idx += 1;
     }
