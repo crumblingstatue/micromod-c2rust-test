@@ -571,11 +571,7 @@ fn resample(
     let llen = instruments[chan.instrument as usize].loop_length;
     let lep1 = (instruments[chan.instrument as usize].loop_start).wrapping_add(llen);
     let sdat = instruments[chan.instrument as usize].sample_data;
-    let mut ampl: i16 = (if chan.mute == 0 {
-        i32::from(chan.ampl)
-    } else {
-        0
-    }) as i16;
+    let mut ampl = if chan.mute == 0 { chan.ampl } else { 0 };
     let lamp: i16 = ((i32::from(ampl) * (127 - i32::from(chan.panning))) >> 5) as i16;
     let ramp: i16 = ((i32::from(ampl) * i32::from(chan.panning)) >> 5) as i16;
     while buf_idx < buf_end {
@@ -595,7 +591,7 @@ fn resample(
             }
             if lamp != 0 && ramp != 0 {
                 while sidx < epos {
-                    ampl = i16::from(sdat[sidx >> 14]);
+                    ampl = sdat[sidx >> 14] as u8;
                     let idx = buf_idx;
                     buf_idx = buf_idx.wrapping_add(1);
                     let sample = &mut buf[idx];
