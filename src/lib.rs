@@ -548,23 +548,23 @@ fn sequence_row(
     }
     song_end
 }
-fn sequence_tick(state: &mut MmC2r) -> bool {
+fn sequence_tick(mm: &mut MmC2r) -> bool {
     let mut song_end = false;
     let mut chan_idx;
-    state.playback.tick -= 1;
-    if state.playback.tick <= 0 {
-        state.playback.tick = state.playback.speed;
-        song_end = sequence_row(state);
+    mm.playback.tick -= 1;
+    if mm.playback.tick <= 0 {
+        mm.playback.tick = mm.playback.speed;
+        song_end = sequence_row(mm);
     } else {
         chan_idx = 0;
-        while chan_idx < state.src.num_channels {
+        while chan_idx < mm.src.num_channels {
             channel_tick(
-                &mut state.channels[chan_idx as usize],
-                state.sample_rate,
-                state.playback.gain,
-                state.playback.c2_rate,
-                &mut state.playback.random_seed,
-                &state.src.instruments,
+                &mut mm.channels[chan_idx as usize],
+                mm.sample_rate,
+                mm.playback.gain,
+                mm.playback.c2_rate,
+                &mut mm.playback.random_seed,
+                &mm.src.instruments,
             );
             chan_idx += 1;
         }
@@ -670,7 +670,7 @@ impl MmC2r<'_> {
         let song_length = i64::from(i32::from(data[950]) & 0x7f);
         let sequence = &data[952..];
         let pattern_data = &data[1084..];
-        let mut state = MmC2r {
+        let mut mm = MmC2r {
             sample_rate,
             channels: Default::default(),
             src: ModSrc {
@@ -684,27 +684,26 @@ impl MmC2r<'_> {
             },
             playback: PlaybackState::default(),
         };
-        state.src.num_patterns = calculate_num_patterns(data);
-        let mut sample_data_offset =
-            1084 + state.src.num_patterns * 64 * state.src.num_channels * 4;
+        mm.src.num_patterns = calculate_num_patterns(data);
+        let mut sample_data_offset = 1084 + mm.src.num_patterns * 64 * mm.src.num_channels * 4;
         let mut inst_idx = 1;
         // First instrument is an unused dummy instrument
-        state.src.instruments.push(Instrument::dummy());
+        mm.src.instruments.push(Instrument::dummy());
         while inst_idx < 32 {
             let sample_length = unsigned_short_big_endian(
-                bytemuck::cast_slice(state.src.module_data),
+                bytemuck::cast_slice(mm.src.module_data),
                 inst_idx * 30 + 12,
             ) * 2;
-            let fine_tune = i64::from(i32::from(state.src.module_data[inst_idx * 30 + 14]) & 0xf);
+            let fine_tune = i64::from(i32::from(mm.src.module_data[inst_idx * 30 + 14]) & 0xf);
             let fine_tune = ((fine_tune & 0x7) - (fine_tune & 0x8) + 8) as u8;
-            let volume = i64::from(i32::from(state.src.module_data[inst_idx * 30 + 15]) & 0x7f);
+            let volume = i64::from(i32::from(mm.src.module_data[inst_idx * 30 + 15]) & 0x7f);
             let volume = (if volume > 64 { 64 } else { volume }) as u8;
             let mut loop_start = unsigned_short_big_endian(
-                bytemuck::cast_slice(state.src.module_data),
+                bytemuck::cast_slice(mm.src.module_data),
                 inst_idx * 30 + 16,
             ) * 2;
             let mut loop_length = unsigned_short_big_endian(
-                bytemuck::cast_slice(state.src.module_data),
+                bytemuck::cast_slice(mm.src.module_data),
                 inst_idx * 30 + 18,
             ) * 2;
             if loop_start + loop_length > sample_length {
@@ -723,7 +722,7 @@ impl MmC2r<'_> {
             let sample_data = &bytemuck::cast_slice::<u8, i8>(data)[sample_data_offset as usize..];
             sample_data_offset += sample_length as i64;
             inst_idx += 1;
-            state.src.instruments.push(Instrument {
+            mm.src.instruments.push(Instrument {
                 volume,
                 fine_tune,
                 loop_start: loop_start as usize,
@@ -731,15 +730,11 @@ impl MmC2r<'_> {
                 sample_data,
             });
         }
-        state.playback.c2_rate = i64::from(if state.src.num_channels > 4 {
-            8363
-        } else {
-            8287
-        });
-        state.playback.gain = i64::from(if state.src.num_channels > 4 { 32 } else { 64 });
-        state.mute_channel(-1);
-        micromod_set_position(0, &mut state);
-        Ok(state)
+        mm.playback.c2_rate = i64::from(if mm.src.num_channels > 4 { 8363 } else { 8287 });
+        mm.playback.gain = i64::from(if mm.src.num_channels > 4 { 32 } else { 64 });
+        mm.mute_channel(-1);
+        micromod_set_position(0, &mut mm);
+        Ok(mm)
     }
     /// Fill a buffer with delicious samples
     pub fn get_audio(&mut self, output_buffer: &mut [i16], mut count: i64) -> bool {
@@ -828,24 +823,24 @@ impl MmC2r<'_> {
     }
 }
 
-fn micromod_set_position(mut pos: i64, state: &mut MmC2r) {
-    if state.src.num_channels <= 0 {
+fn micromod_set_position(mut pos: i64, mm: &mut MmC2r) {
+    if mm.src.num_channels <= 0 {
         return;
     }
-    if pos >= state.src.song_length {
+    if pos >= mm.src.song_length {
         pos = 0;
     }
-    state.playback.break_pattern = pos;
-    state.playback.next_row = 0;
-    state.playback.tick = 1;
-    state.playback.speed = 6;
-    set_tempo(125, &mut state.playback.tick_len, state.sample_rate);
-    state.playback.pl_channel = -1;
-    state.playback.pl_count = state.playback.pl_channel;
-    state.playback.random_seed = 0xabcdef;
+    mm.playback.break_pattern = pos;
+    mm.playback.next_row = 0;
+    mm.playback.tick = 1;
+    mm.playback.speed = 6;
+    set_tempo(125, &mut mm.playback.tick_len, mm.sample_rate);
+    mm.playback.pl_channel = -1;
+    mm.playback.pl_count = mm.playback.pl_channel;
+    mm.playback.random_seed = 0xabcdef;
     let mut chan_idx = 0;
-    while chan_idx < state.src.num_channels {
-        let chan = &mut state.channels[chan_idx as usize];
+    while chan_idx < mm.src.num_channels {
+        let chan = &mut mm.channels[chan_idx as usize];
         chan.id = chan_idx as u8;
         chan.assigned = 0;
         chan.instrument = 0;
@@ -861,17 +856,17 @@ fn micromod_set_position(mut pos: i64, state: &mut MmC2r) {
         }
         chan_idx += 1;
     }
-    sequence_tick(state);
-    state.playback.tick_offset = 0;
+    sequence_tick(mm);
+    mm.playback.tick_offset = 0;
 }
 
 #[test]
 fn test_against_orig() {
     let mut test_bytes: Vec<u8> = Vec::new();
-    let mut state = MmC2r::new(include_bytes!("../testdata/rainysum.mod"), 48_000).unwrap();
+    let mut mm = MmC2r::new(include_bytes!("../testdata/rainysum.mod"), 48_000).unwrap();
     for _ in 0..1000 {
         let mut out = [0; 4096];
-        state.get_audio(&mut out, 2048);
+        mm.get_audio(&mut out, 2048);
         test_bytes.extend_from_slice(bytemuck::cast_slice(&out));
     }
     assert!(test_bytes == include_bytes!("../testdata/orig.pcm"));
