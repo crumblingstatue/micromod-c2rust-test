@@ -608,10 +608,9 @@ fn resample(
             if llen <= 16384 {
                 sidx = lep1;
                 break;
-            } else {
-                while sidx >= lep1 {
-                    sidx = sidx.wrapping_sub(llen);
-                }
+            }
+            while sidx >= lep1 {
+                sidx = sidx.wrapping_sub(llen);
             }
         }
         epos = sidx.wrapping_add((buf_end.wrapping_sub(buf_idx) >> 1).wrapping_mul(step));
