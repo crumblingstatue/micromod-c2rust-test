@@ -495,46 +495,53 @@ fn channel_tick(
         update_frequency(chan, sample_rate, gain, c2_rate);
     }
 }
-fn sequence_row(state: &mut MmC2r) -> bool {
+fn sequence_row(
+    MmC2r {
+        sample_rate,
+        channels,
+        src,
+        playback,
+    }: &mut MmC2r,
+) -> bool {
     let mut song_end = false;
     let mut chan_idx;
     let mut pat_offset;
     let mut effect;
     let mut param;
     let mut note;
-    if state.playback.next_row < 0 {
-        state.playback.break_pattern = state.playback.pattern + 1;
-        state.playback.next_row = 0;
+    if playback.next_row < 0 {
+        playback.break_pattern = playback.pattern + 1;
+        playback.next_row = 0;
     }
-    if state.playback.break_pattern >= 0 {
-        if state.playback.break_pattern >= state.src.song_length {
-            state.playback.next_row = 0;
-            state.playback.break_pattern = state.playback.next_row;
+    if playback.break_pattern >= 0 {
+        if playback.break_pattern >= src.song_length {
+            playback.next_row = 0;
+            playback.break_pattern = playback.next_row;
         }
-        if state.playback.break_pattern <= state.playback.pattern {
+        if playback.break_pattern <= playback.pattern {
             song_end = true;
         }
-        state.playback.pattern = state.playback.break_pattern;
+        playback.pattern = playback.break_pattern;
         chan_idx = 0;
-        while chan_idx < state.src.num_channels {
-            state.channels[chan_idx as usize].pl_row = 0;
+        while chan_idx < src.num_channels {
+            channels[chan_idx as usize].pl_row = 0;
             chan_idx += 1;
         }
-        state.playback.break_pattern = -1;
+        playback.break_pattern = -1;
     }
-    state.playback.row = state.playback.next_row;
-    state.playback.next_row = state.playback.row + 1;
-    if state.playback.next_row >= 64 {
-        state.playback.next_row = -1;
+    playback.row = playback.next_row;
+    playback.next_row = playback.row + 1;
+    if playback.next_row >= 64 {
+        playback.next_row = -1;
     }
-    pat_offset = (i64::from(i32::from(state.src.sequence[state.playback.pattern as usize]) * 64)
-        + state.playback.row)
-        * state.src.num_channels
+    pat_offset = (i64::from(i32::from(src.sequence[playback.pattern as usize]) * 64)
+        + playback.row)
+        * src.num_channels
         * 4;
     chan_idx = 0;
-    while chan_idx < state.src.num_channels {
-        note = &mut (state.channels[chan_idx as usize]).note;
-        let pattern_data = state.src.pattern_data;
+    while chan_idx < src.num_channels {
+        note = &mut (channels[chan_idx as usize]).note;
+        let pattern_data = src.pattern_data;
         note.key = ((i32::from(pattern_data[pat_offset as usize]) & 0xf_i32) << 8) as u16;
         let fresh7 = &mut note.key;
         *fresh7 = (i32::from(*fresh7) | i32::from(pattern_data[(pat_offset + 1) as usize])) as u16;
@@ -555,10 +562,10 @@ fn sequence_row(state: &mut MmC2r) -> bool {
         note.effect = effect as u8;
         note.param = param as u8;
         channel_row(
-            &mut state.channels[chan_idx as usize],
-            state.sample_rate,
-            &state.src,
-            &mut state.playback,
+            &mut channels[chan_idx as usize],
+            *sample_rate,
+            src,
+            playback,
         );
         chan_idx += 1;
     }
