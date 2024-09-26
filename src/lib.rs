@@ -5,6 +5,8 @@
 
 #![warn(missing_docs)]
 
+mod consts;
+
 use std::cmp::Ordering;
 
 #[derive(Copy, Clone, Default)]
@@ -65,18 +67,6 @@ impl Instrument<'_> {
         }
     }
 }
-
-static MICROMOD_VERSION: &str = "Micromod Protracker replay 20180625 (c)mumart@gmail.com";
-static FINE_TUNING: [u16; 16] = [
-    4340, 4308, 4277, 4247, 4216, 4186, 4156, 4126, 4096, 4067, 4037, 4008, 3979, 3951, 3922, 3894,
-];
-static ARP_TUNING: [u16; 16] = [
-    4096, 3866, 3649, 3444, 3251, 3069, 2896, 2734, 2580, 2435, 2299, 2170, 2048, 1933, 1825, 1722,
-];
-static SINE_TABLE: [u8; 32] = [
-    0, 24, 49, 74, 97, 120, 141, 161, 180, 197, 212, 224, 235, 244, 250, 253, 255, 253, 250, 244,
-    235, 224, 212, 197, 180, 161, 141, 120, 97, 74, 49, 24,
-];
 
 /// Immutable source data of the module
 struct ModSrc<'src> {
@@ -174,7 +164,7 @@ fn update_frequency(chan: &mut Channel, sample_rate: i64, gain: &mut i64, c2_rat
     let mut volume;
 
     period = (chan.period as i32 + chan.vibrato_add as i32) as i64;
-    period = (period * ARP_TUNING[chan.arpeggio_add as usize] as i64) >> 11;
+    period = (period * consts::ARP_TUNING[chan.arpeggio_add as usize] as i64) >> 11;
     period = (period >> 1) + (period & 1);
     if period < 14 {
         period = 6848;
@@ -217,7 +207,7 @@ fn waveform(phase: i64, type_0: i64, random_seed: &mut i64) -> i64 {
     let mut amplitude: i64 = 0;
     match type_0 & 0x3 {
         0 => {
-            amplitude = SINE_TABLE[(phase & 0x1f) as usize] as i64;
+            amplitude = consts::SINE_TABLE[(phase & 0x1f) as usize] as i64;
             if phase & 0x20 > 0 {
                 amplitude = -amplitude;
             }
@@ -272,7 +262,7 @@ fn trigger(channel: &mut Channel, instruments: &[Instrument]) {
     }
     if channel.note.key as i32 > 0 {
         period = ((channel.note.key as i32
-            * FINE_TUNING[(channel.fine_tune as i32 & 0xf_i32) as usize] as i32)
+            * consts::FINE_TUNING[(channel.fine_tune as i32 & 0xf_i32) as usize] as i32)
             >> 11) as i64;
         channel.porta_period = ((period >> 1) + (period & 1)) as u16;
         if channel.note.effect as i32 != 0x3_i32 && channel.note.effect as i32 != 0x5_i32 {
@@ -693,7 +683,7 @@ fn resample(
 
 /// Get a nice version string. I guess.
 pub fn version() -> &'static str {
-    MICROMOD_VERSION
+    consts::MICROMOD_VERSION
 }
 
 /// An error that can happen when trying to initialize micromod
