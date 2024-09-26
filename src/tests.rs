@@ -1,4 +1,4 @@
-use crate::MmC2r;
+use crate::Engine;
 
 #[test]
 fn orig_cmp_tests() {
@@ -14,7 +14,7 @@ fn orig_cmp_tests() {
 
 fn compare_rendering(mod_data: &[u8], orig: &[u8]) {
     let mut test_bytes: Vec<u8> = Vec::new();
-    let mut mm = MmC2r::new(mod_data, 48_000).unwrap();
+    let mut mm = Engine::new(mod_data, 48_000).unwrap();
     for _ in 0..1000 {
         let mut out = [0; 4096];
         mm.get_audio(&mut out, 2048);
